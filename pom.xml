@@ -8,17 +8,30 @@
   <packaging>jar</packaging>
 
   <name>xnat-infovis</name>
-  <url>http://maven.apache.org</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <dependencies>
+    <!-- prefuse vis library -->
+    <dependency>
+      <groupId>org.prefuse</groupId>
+      <artifactId>prefuse</artifactId>
+      <version>beta-20071021</version>
+      <scope>compile</scope>
+    </dependency>
+    <!-- jersey REST client for using xNAT's REST API -->
+    <dependency>
+      <groupId>com.sun.jersey</groupId>
+      <artifactId>jersey-client</artifactId>
+      <version>1.8</version>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>3.8.1</version>
+      <version>4.3</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
