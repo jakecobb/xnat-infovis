@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xdat:search ID="" allow-diff-columns="0" secure="false" brief-description="MR Sessions"
+ xmlns:xdat="http://nrg.wustl.edu/security" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+##
+  <xdat:root_element_name>$rootElement</xdat:root_element_name>
+##  
+## fields to retrieve 
+#foreach($field in $searchFields)
+    <xdat:search_field>
+       <xdat:element_name>${field.elementName}</xdat:element_name>
+        <xdat:field_ID>${field.fieldId}</xdat:field_ID>
+        <xdat:sequence>${foreach.index}</xdat:sequence>
+        <xdat:type>${field.type}</xdat:type>
+        <xdat:header>${field.header}</xdat:header>
+    </xdat:search_field>
+#end
+##
+#macro( search_where $searchWhere $tagName )
+## search query
+    <xdat:$tagName method="${searchWhere.method}">
+#foreach(  $criteria in $searchWhere.criteria )
+  #if($criteria.isWhere())
+    #search_where($criteria "child_set")
+  #else
+        <xdat:criteria override_value_formatting="0">
+          <xdat:schema_field>${criteria.schemeField}</xdat:schema_field>
+          <xdat:comparison_type>${criteria.compType}</xdat:comparison_type>
+          <xdat:value>${criteria.value}</xdat:value>
+        </xdat:criteria>
+   #end
+#end
+    </xdat:$tagName>
+#end
+##
+#if($searchCriteria)
+#search_where($searchCriteria "search_where")
+#end  
+</xdat:search>
