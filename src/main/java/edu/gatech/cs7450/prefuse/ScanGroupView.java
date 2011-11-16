@@ -10,6 +10,7 @@ import javax.swing.JPanel;
 
 import prefuse.Display;
 import prefuse.Visualization;
+import prefuse.action.Action;
 import prefuse.action.ActionList;
 import prefuse.action.RepaintAction;
 import prefuse.action.assignment.ColorAction;
@@ -21,17 +22,113 @@ import prefuse.controls.ZoomControl;
 import prefuse.data.Edge;
 import prefuse.data.Graph;
 import prefuse.data.Node;
-import prefuse.data.Table;
 import prefuse.data.io.DataIOException;
 import prefuse.data.io.GraphMLReader;
 import prefuse.render.DefaultRendererFactory;
 import prefuse.render.LabelRenderer;
+import prefuse.render.RendererFactory;
 import prefuse.util.ColorLib;
+import prefuse.util.force.DragForce;
 import prefuse.util.force.ForceItem;
+import prefuse.util.force.ForceSimulator;
+import prefuse.util.force.NBodyForce;
+import prefuse.util.force.SpringForce;
+import prefuse.visual.EdgeItem;
 import prefuse.visual.VisualItem;
 
-public class ScanGroupView extends JPanel{
+public class ScanGroupView extends JPanel {
+	private static final long serialVersionUID = 1L;
+	
+	protected Graph graph;
+	protected Visualization vis;
+	protected Display display;
+	
+	public ScanGroupView(String xmlPath) throws DataIOException {
+		graph =  new GraphMLReader().readGraph(xmlPath);
+		createVisualization();
+	}
+	
+	public ScanGroupView(Graph graph) {
+		if( graph == null ) throw new NullPointerException("graph is null");
+		this.graph = graph;
+		
+		createVisualization();
+	}
+	
+	protected void createVisualization() {
+		vis = new Visualization();
+		vis.add("graph", graph);
+		vis.setInteractive("graph.nodes", null, true); // allow node interaction
+		
+		vis.setRendererFactory(this.createRendererFactory());
 
+		vis.putAction("color", this.createColorActions());	
+		vis.putAction("layout", this.createLayoutActions());
+		
+		setupDisplay();
+	}
+	
+	protected void setupDisplay() {
+		display = new Display(vis);
+		display.setSize(720, 500);
+		display.addControlListener(new DragControl());
+		display.addControlListener(new PanControl());
+		display.addControlListener(new ZoomControl());
+		this.setSize(720, 500);
+		this.add(display);
+	}
+	
+	public void begin() {
+		vis.run("color");
+		vis.run("layout");
+	}
+	
+	private static final float 
+		MAX_WEIGHT = 5f,
+		TRANSLATE_WEIGHT = 20f,
+		SCALE_WEIGHT = 10f;
+	protected Action createLayoutActions() {
+		ActionList actions = new ActionList(Activity.INFINITY);
+		ForceSimulator sim = new ForceSimulator();
+		sim.addForce(new NBodyForce(NBodyForce.DEFAULT_GRAV_CONSTANT, 50, NBodyForce.DEFAULT_THETA));
+		sim.addForce(new SpringForce());
+		sim.addForce(new DragForce());
+		ForceDirectedLayout layout = new ForceDirectedLayout("graph", sim, false, false) {
+			@Override
+			protected float getSpringCoefficient(EdgeItem e) {
+				return 1.0E-5f;
+			}
+			
+			@Override
+			protected float getSpringLength(EdgeItem e) {
+				float weight = e.getFloat("weight");
+				return TRANSLATE_WEIGHT + (SCALE_WEIGHT * (1f - (weight / MAX_WEIGHT)));
+			}
+		};
+		actions.add(layout);
+		actions.add(new RepaintAction());
+		return actions;
+	}
+
+	protected RendererFactory createRendererFactory() {
+		// Renderers
+		LabelRenderer r = new LabelRenderer("scanGroup");
+		r.setRoundedCorner(20, 20); // round the corners
+		return new DefaultRendererFactory(r);		
+	}
+	
+	protected ActionList createColorActions() {
+		
+		// Colors for text and edges
+		ColorAction text = new ColorAction("graph.nodes" , VisualItem.TEXTCOLOR, ColorLib.gray(0));
+		ColorAction edges = new ColorAction("graph.edges", VisualItem.STROKECOLOR, ColorLib.gray(200));
+		
+		ActionList color = new ActionList();
+		color.add(text);
+		color.add(edges);
+		return color;
+	}
+	
 	/**
 	 * @param args
 	 */
@@ -81,7 +178,7 @@ public class ScanGroupView extends JPanel{
 		
 		Visualization viz = new Visualization();	
 		viz.add("graph", (prefuse.data.Graph) graph);
-		viz.setInteractive(	"graph.nodes", null, false);
+		viz.setInteractive(	"graph.nodes", null, true);
 		
 		// Renderers
 		LabelRenderer r = new LabelRenderer("scanGroup");
@@ -99,6 +196,13 @@ public class ScanGroupView extends JPanel{
 		// Laying out the graph 
 		ActionList layout = new ActionList(Activity.INFINITY);
 		layout.add(new ForceDirectedLayout("graph"));
+//		ForceDirectedLayout fdLayout = new ForceDirectedLayout("graph");
+//		ForceSimulator fdSim = new ForceSimulator();
+////		fdSim.addForce(new NBodyForce());
+//		fdSim.addForce(new SpringForce());
+////		fdSim.addForce(new DragForce());
+//		fdLayout.setForceSimulator(fdSim);
+//		layout.add(fdLayout);
 		layout.add(new RepaintAction());
 		
 		// Adding the actions to the viz
@@ -165,96 +269,7 @@ public class ScanGroupView extends JPanel{
 		
 		viz.run("color");
 		viz.run("layout");
-//		
-//		
-//		// Initializing all the arrays required
-//		arrSrcNodes = new int[edgeCount];
-//		arrTrgtNodes = new int[edgeCount];
-//		arrWt = new double[edgeCount];
-//		checkedNodeArr = new int[edgeCount];
-//		tempArrWt = new double[edgeCount];
-//		tempArrTrgt = new int[edgeCount];
-//		
-//		for (int i = 0; i < edgeCount; i++){
-//			// getting the Tuple Instance for each edge.
-//			edgeTuple = graph.getEdge(i);
-//			
-//		   edgeTupleStr = edgeTuple.toString();
-//		   // Parsing the Tuple to get the node ids.
-//		   String delimiter = "\\[";
-//		  
-//		   tempArr = edgeTupleStr.split(delimiter);
-//		   delimiter = "\\]";
-//		   edgeTupleArr = tempArr[1].split(delimiter);
-//		   
-//		  // al.add(edgeTupleArr[0]);
-//		  
-//		   delimiter = ",";
-//		   tempArrNodes = edgeTupleArr[0].split(delimiter);
-//		   
-//		   // Creating 3 arrays --- one for src nodes , one for target nodes, and one for the weights
-//		   arrSrcNodes[i] = Integer.parseInt(tempArrNodes[0]);
-//		   arrTrgtNodes[i] = Integer.parseInt(tempArrNodes[1]);
-//		   arrWt[i] = Double.parseDouble(tempArrNodes[2]);
-//		  	   
-//		}
-//		
-//		// To group a source node and its edges/ connections to source nodes together
-//		// and process them one at a time. 
-//		for (int i=0; i < edgeCount; i++){
-//			flag = storeCheckingNode(arrSrcNodes[i]);
-//			
-//			if (flag == 1){
-//				
-//				checkedNodeArr[i] = arrSrcNodes[i];
-//					m = 0;
-//					for (int k = 0; k < checkedNodeArr.length; k++){
-//						
-//						if(arrSrcNodes[k] == checkedNodeArr[i]){
-//							
-//							tempArrWt[m] = arrWt[k];
-//							tempArrTrgt[m] = arrTrgtNodes[k];
-//							System.out.println(tempArrWt[m]);
-//							System.out.println(tempArrTrgt[m]);
-//							
-//							m++;
-//						}	
-//					
-//				}
-//					Table tempTable = new Table(1,m);
-//					
-//					for (int j=0 ; j < m ;j++){
-//						//ForceSimulator fSim = new ForceSimulator();
-//						//fSim.addForce(new SpringForce(3,6));
-//						//wanted to use the addSpring Method.
-//					//tempTable.addColumn("target", tempArrTrgt[j]);	
-//						
-//						
-//					}
-//					// force direcred code
-//					
-//			}//end of if (flag)
-//			else {
-//				// do nothn.... 
-//			}
-//		}
-//		
-		
-	}
-	
-	// Function to check if a node has been considered once or not (To avoid duplication)
-	public static int storeCheckingNode(int node){
-	
-		for (int pos = 0; pos < checkedNodeArr.length ; pos++){
-			System.out.println(checkedNodeArr[pos]);
-			if (checkedNodeArr[pos] == node){
-				flag = 0;
-				return flag;
-			}
-			
-		}
-		return 1;
-		
+
 		
 	}
 
