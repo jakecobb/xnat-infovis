@@ -1,0 +1,21 @@
+xnat-infovis :: xNAT Information Visualization Project
+
+Developing in Eclipse
+=====================
+
+xnat-infovis is built with Maven.  You can setup for Eclipse by running:
+
+$ mvn -DdownloadSources=true -DdownloadJavadocs=true eclipse:eclipse
+
+Then use Import -> Existing Projects into Workspace.  If the pom.xml 
+changes, you can rerun mvn eclipse:eclipse and then refresh the project.
+
+Running Unit Tests in Eclipse
+=============================
+
+After setting up above, you need to get Maven to copy the resources 
+once (or again after you've added new ones).  After that, you can 
+run the JUnit tests in Eclipse as normal.  The copy command is:
+
+$ mvn resources:resources resources:testResources
+
