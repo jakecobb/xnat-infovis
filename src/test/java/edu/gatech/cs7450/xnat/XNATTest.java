@@ -15,6 +15,7 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.filter.HTTPBasicAuthFilter;
 
 import edu.gatech.cs7450.Util;
+import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 
 
 public class XNATTest {
@@ -69,10 +70,10 @@ public class XNATTest {
 		);
 		SearchWhere searchWhere = new SearchWhere("AND", Arrays.asList(
 			new SearchWhere("OR", Arrays.asList(
-				new SingleCriteria("xnat:mrSessionData/sharing/share/project", "=", "CENTRAL_OASIS_CS"),
-				new SingleCriteria("xnat:mrSessionData/PROJECT", "=", "CENTRAL_OASIS_CS")
+				new SingleCriteria("xnat:mrSessionData/sharing/share/project", CompareOperator.EQUAL, "CENTRAL_OASIS_CS"),
+				new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.EQUAL, "CENTRAL_OASIS_CS")
 			)),
-			new SingleCriteria("xnat:mrSessionData/PROJECT", "LIKE", "a")
+			new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.LIKE, "a")
 		));
 		
 		System.out.println("MESSAGE: ");

@@ -24,7 +24,7 @@
   #else
         <xdat:criteria override_value_formatting="0">
           <xdat:schema_field>${criteria.schemeField}</xdat:schema_field>
-          <xdat:comparison_type>${criteria.compType}</xdat:comparison_type>
+          <xdat:comparison_type>${criteria.operator}</xdat:comparison_type>
           <xdat:value>${criteria.value}</xdat:value>
         </xdat:criteria>
    #end
