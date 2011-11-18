@@ -9,6 +9,9 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.util.ArrayList;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
@@ -19,6 +22,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 
+import edu.gatech.cs7450.xnat.SearchCriteria;
+import edu.gatech.cs7450.xnat.SearchWhere;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 
 /**
@@ -33,10 +38,19 @@ public class SearchWherePanel extends JPanel {
 	private JButton btnDelete;
 	
 	public static void main(String[] args) {
-		SearchWherePanel view = new SearchWherePanel();
+		final SearchWherePanel view = new SearchWherePanel();
 		JFrame frame = new JFrame("blah");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().add(view);
+		
+		frame.addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentMoved(ComponentEvent e) {
+				System.out.println("SearchWhere: ");
+				System.out.println(view.toSearchWhere());
+			}
+		});
+
 		frame.pack();
 		frame.setVisible(true);
 	}
@@ -163,6 +177,20 @@ public class SearchWherePanel extends JPanel {
 		
 		revalidate();
 		repaint();
+	}
+	
+	public SearchWhere toSearchWhere() {
+		Component[] components = getComponents();
+		ArrayList<SearchCriteria> criteria = new ArrayList<SearchCriteria>(components.length - 1);
+		for( Component comp : components ) {
+			if( comp instanceof SingleCriteriaPanel ) {
+				criteria.add( ((SingleCriteriaPanel)comp).toSingleCriteria() );
+			} else if ( comp instanceof SearchWherePanel ) {
+				criteria.add( ((SearchWherePanel)comp).toSearchWhere() );
+			}
+		}
+		SearchMethod method = (SearchMethod)this.searchMethod.getSelectedItem();
+		return new SearchWhere(method, criteria);
 	}
 
 }

@@ -79,7 +79,7 @@ public class SingleCriteriaPanel extends JPanel {
 	
 	public SingleCriteria toSingleCriteria() {
 		String field = txtSchemeField.getText(), value = txtFieldValue.getText();
-		CompareOperator operator = CompareOperator.valueOf(cmbOperator.getSelectedItem().toString());
+		CompareOperator operator = (CompareOperator)cmbOperator.getSelectedItem();
 		return new SingleCriteria(field, operator, value);
 	}
 
