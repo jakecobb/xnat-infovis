@@ -15,6 +15,7 @@ import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.client.filter.HTTPBasicAuthFilter;
 
 import edu.gatech.cs7450.Util;
+import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 
 
@@ -68,8 +69,8 @@ public class XNATTest {
 			new SearchField("xnat:mrSessionData", "LABEL", "string", "MR ID"),
 			new SearchField("xnat:subjectData", "LABEL", "string", "Subject")
 		);
-		SearchWhere searchWhere = new SearchWhere("AND", Arrays.asList(
-			new SearchWhere("OR", Arrays.asList(
+		SearchWhere searchWhere = new SearchWhere(SearchMethod.AND, Arrays.asList(
+			new SearchWhere(SearchMethod.OR, Arrays.asList(
 				new SingleCriteria("xnat:mrSessionData/sharing/share/project", CompareOperator.EQUAL, "CENTRAL_OASIS_CS"),
 				new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.EQUAL, "CENTRAL_OASIS_CS")
 			)),
