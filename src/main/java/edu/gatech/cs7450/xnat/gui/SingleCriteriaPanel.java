@@ -12,6 +12,9 @@ import javax.swing.JTextField;
 
 import edu.gatech.cs7450.xnat.SingleCriteria;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
+import javax.swing.JButton;
+import java.awt.Font;
+import java.awt.Insets;
 
 public class SingleCriteriaPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -19,6 +22,7 @@ public class SingleCriteriaPanel extends JPanel {
 	private JTextField txtSchemeField;
 	private JTextField txtFieldValue;
 	private JComboBox cmbOperator;
+	private JButton btnDelete;
 
 	/**
 	 * Create the panel.
@@ -55,8 +59,23 @@ public class SingleCriteriaPanel extends JPanel {
 		txtFieldValue.setPreferredSize(new Dimension(50, 19));
 		txtFieldValue.setMinimumSize(new Dimension(50, 19));
 		txtFieldValue.setColumns(10);
+		
+		Component horizontalStrut_2 = Box.createHorizontalStrut(20);
+		horizontalBox.add(horizontalStrut_2);
+		
+		btnDelete = new JButton("x");
+		btnDelete.setVisible(false);
+		btnDelete.setEnabled(false);
+		btnDelete.setSize(new Dimension(25, 25));
+		btnDelete.setPreferredSize(new Dimension(25, 25));
+		btnDelete.setMinimumSize(new Dimension(25, 25));
+		btnDelete.setMargin(new Insets(0, 0, 0, 0));
+		btnDelete.setFont(new Font("Dialog", Font.BOLD, 18));
+		horizontalBox.add(btnDelete);
 
 	}
+	
+	public JButton getDeleteButton() { return btnDelete; }
 	
 	public SingleCriteria toSingleCriteria() {
 		String field = txtSchemeField.getText(), value = txtFieldValue.getText();
