@@ -2,6 +2,8 @@ package edu.gatech.cs7450.xnat.gui;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -11,14 +13,13 @@ import java.awt.event.ActionListener;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
-import java.awt.Font;
-import java.awt.Dimension;
 
 /**
  * A panel for manipulating an xNAT search group.
@@ -49,7 +50,7 @@ public class SearchWherePanel extends JPanel {
 		gridBagLayout.columnWidths = new int[]{129, 71, 0, 0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{37, 0};
 		gridBagLayout.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
-		gridBagLayout.rowWeights = new double[]{0.0, 0.0};
+		gridBagLayout.rowWeights = new double[]{0.0, Double.MIN_VALUE};
 		setLayout(gridBagLayout);
 		
 		JLabel lblNewLabel = new JLabel("Search Method:");
@@ -129,7 +130,15 @@ public class SearchWherePanel extends JPanel {
 		addDeletableComponent(pnlSearch, pnlSearch.getDeleteButton());
 	}
 	
-	protected void addDeletableComponent(final Component component, final JButton delButton) {
+	protected void addDeletableComponent(final JComponent component, final JButton delButton) {
+		// reduce weight of previous last row
+		GridBagLayout layout = (GridBagLayout)getLayout();
+		Component[] components = getComponents();
+		Component lastComponent = components[components.length - 1];
+		GridBagConstraints lastConstraints = layout.getConstraints(lastComponent);
+		lastConstraints.weighty = 0.0;
+		layout.setConstraints(lastComponent, lastConstraints);
+		
 		GridBagConstraints constraints = new GridBagConstraints();
 		constraints.anchor = GridBagConstraints.NORTHWEST;
 		constraints.gridwidth = 5;
@@ -137,7 +146,7 @@ public class SearchWherePanel extends JPanel {
 		constraints.gridy = GridBagConstraints.RELATIVE;
 		constraints.fill = GridBagConstraints.HORIZONTAL;
 		constraints.weighty = 1.0;
-//		constraints.
+		component.setAlignmentY(Component.TOP_ALIGNMENT);
 		add(component, constraints);
 
 		delButton.addActionListener(new ActionListener() {
