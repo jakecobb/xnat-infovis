@@ -6,37 +6,41 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.EventObject;
-import java.util.Vector;
 
-import javax.swing.DefaultCellEditor;
+import javax.swing.AbstractCellEditor;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
-import javax.swing.event.CellEditorListener;
-import javax.swing.event.ChangeEvent;
+import javax.swing.UIManager;
 import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellEditor;
+import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellEditor;
 import javax.swing.tree.TreePath;
 
 import prefuse.util.ui.UILib;
+
+import com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel;
+
 import edu.gatech.cs7450.xnat.SearchCriteria;
 import edu.gatech.cs7450.xnat.SearchWhere;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 import edu.gatech.cs7450.xnat.SingleCriteria;
 
 public class SearchPanel extends JPanel {
+	private static final long serialVersionUID = 1L;
+	
 	private JTree treeCriteria;
 	private DefaultTreeModel treeModel;
 	
@@ -147,128 +151,106 @@ public class SearchPanel extends JPanel {
 		setupTree();
 	}
 	
-
-	private static class SearchTreeCellEditor implements TreeCellEditor {
-		private Vector<CellEditorListener> _listeners = new Vector<CellEditorListener>(1);
-		private SingleCriteriaPanel _pnlSingleCriteria;
-		private SearchTreeNode _node;	
-		private TreePath _lastPath;
+	private static class SearchTreeCellEditor extends AbstractCellEditor implements TreeCellEditor {
+		private static final long serialVersionUID = 1L;
 		
-		private DefaultCellEditor _defaultEditor;
-		
+		private KeyHandler keyHandler = new KeyHandler();
+		private SearchTreeNode searchNode;
+		private SearchCriteria editingCriteria;
+		private SingleCriteriaPanel pnlSingleCriteria;
+		private JComboBox cmbSearchMethod;
+				
 		public SearchTreeCellEditor() {
+			pnlSingleCriteria = makeSingleCriteriaPanel();
+			cmbSearchMethod = makeSearchMethodCombo();
 		}
 		
-		protected void checkSearchMethod() { 
-			if( _defaultEditor == null ) {
-				JComboBox searchMethod = new JComboBox();
-				searchMethod = new JComboBox();
-				searchMethod.setModel(new DefaultComboBoxModel(SearchMethod.values()));
-				searchMethod.setMinimumSize(new Dimension(32, 12));
-				searchMethod.setMaximumSize(new Dimension(32, 18));
-				searchMethod.setFont(new Font("Dialog", Font.BOLD, 10));
-				
-				_defaultEditor = new DefaultCellEditor(searchMethod);
-			}
+		private SingleCriteriaPanel makeSingleCriteriaPanel() {
+			SingleCriteriaPanel panel = new SingleCriteriaPanel();
+			panel.addKeyListener(keyHandler);
+			return panel;
+		}
+		
+		private JComboBox makeSearchMethodCombo() {
+			JComboBox searchMethod = new JComboBox();
+			searchMethod = new JComboBox();
+			searchMethod.setModel(new DefaultComboBoxModel(SearchMethod.values()));
+//			searchMethod.setMinimumSize(new Dimension(32, 8));
+			searchMethod.setMinimumSize(null);
+			searchMethod.setMaximumSize(new Dimension(32, 18));
+			searchMethod.setFont(new Font("Dialog", Font.BOLD, 10));
+			searchMethod.putClientProperty("JComboBox.isTreeCellEditor", Boolean.TRUE);
+			
+			searchMethod.addKeyListener(keyHandler);
+			
+			searchMethod.setOpaque(true);
+			((JComponent)searchMethod.getEditor().getEditorComponent()).setBorder(null);
+			return searchMethod;
 		}
 		
 		@Override
 		public boolean stopCellEditing() {
-			_node = null;
-			ChangeEvent event = new ChangeEvent(this);
-			for( CellEditorListener l : new ArrayList<CellEditorListener>(_listeners) ) // iterate on copy
-				l.editingStopped(event);
-			return true;
-		}
-		
-		@Override
-		public boolean shouldSelectCell(EventObject anEvent) {
-			System.out.println("shouldSelectCell: " + anEvent);
-			return true;
-		}
-		
-		@Override
-		public void removeCellEditorListener(CellEditorListener l) {
-			_listeners.remove(l);
-		}
-		
-		@Override
-		public boolean isCellEditable(EventObject anEvent) {
-			System.out.println("isCellEditable: " + anEvent);
-			if( !(anEvent instanceof MouseEvent ) )
-				return false;
-			MouseEvent me = (MouseEvent)anEvent;
-			if( me.getButton() != MouseEvent.BUTTON1 )
-				return false;
-			
-			JTree tree = (JTree)anEvent.getSource();
-			TreePath path = tree.getPathForLocation(me.getX(), me.getY());
-			switch( me.getClickCount() ) {
-			case 1:
-				_lastPath = path;
-			default:
-				return false;
-			case 2:
-				return path != null && path.equals(_lastPath);
-			// FIXME wait a little to see if there is a third click?
+			if( editingCriteria.isWhere() ) {
+				((SearchWhere)editingCriteria).setMethod((SearchMethod)cmbSearchMethod.getSelectedItem());
+			} else {
+				pnlSingleCriteria.toSingleCriteria((SingleCriteria)editingCriteria);
 			}
-		}
+			return super.stopCellEditing();
+		}		
 		
 		@Override
 		public Object getCellEditorValue() {
-			if( _node.isSingleCriteria() ) {
-				_pnlSingleCriteria.toSingleCriteria(_node.asSingleCriteria());
-			} else {
-				_node.asSearchWhere().setMethod((SearchMethod)_defaultEditor.getCellEditorValue());
-			}
-			return _node;
+			return editingCriteria;
 		}
-		
-		@Override
-		public void cancelCellEditing() {
-			_node = null; _lastPath = null;
-			ChangeEvent event = new ChangeEvent(this);
-			for( CellEditorListener l : new ArrayList<CellEditorListener>(_listeners) ) // iterate on copy
-				l.editingCanceled(event);
-		}
-		
-		@Override
-		public void addCellEditorListener(CellEditorListener l) {
-			_listeners.add(l);
-		}
-		
+
 		@Override
 		public Component getTreeCellEditorComponent(JTree tree, Object value, boolean isSelected, boolean expanded, boolean leaf, int row) {
-			SearchTreeNode node = (SearchTreeNode)value;
-			_node = node;
-			if( node.isSingleCriteria() ) {
-				if( _pnlSingleCriteria == null )
-					_pnlSingleCriteria = new SingleCriteriaPanel();
-				_pnlSingleCriteria.fromSingleCriteria(node.asSingleCriteria());
-				return _pnlSingleCriteria;
+			if( !(value instanceof SearchTreeNode) )
+				throw new RuntimeException("Expecting search tree node, not: " + value.getClass());
+			
+			searchNode = (SearchTreeNode)value;
+			editingCriteria = searchNode.asSearchCriteria();
+			if( searchNode.isSearchWhere() ) {
+				cmbSearchMethod.setSelectedItem(searchNode.asSearchWhere().getMethod());
+				return cmbSearchMethod;
 			} else {
-				checkSearchMethod();
-				SearchMethod method = node.asSearchWhere().getMethod();
-				return _defaultEditor.getTreeCellEditorComponent(tree, method, isSelected, expanded, leaf, row);
+				pnlSingleCriteria.fromSingleCriteria(searchNode.asSingleCriteria());
+				return pnlSingleCriteria;
+			}
+		}
+		
+		/** Helper to accept on <code>&lt;ENTER&gt;</code> and cancel on <code>&lt;ESC&gt;</code>. */
+		private class KeyHandler extends KeyAdapter {
+			@Override
+			public void keyPressed(KeyEvent e) {
+				int keyCode = e.getKeyCode();
+				if( keyCode == KeyEvent.VK_ENTER )
+					stopCellEditing();
+				else if( keyCode == KeyEvent.VK_ESCAPE )
+					cancelCellEditing();
 			}
 		}
 	}
+	
+
+
 	
 	private void setupTree() {
 		treeModel = new DefaultTreeModel(new SearchTreeNode(rootSearchGroup), true);
 		treeCriteria.setModel(treeModel);
 		
-		treeCriteria.setCellEditor(new SearchTreeCellEditor());
+		treeCriteria.setCellEditor(new DefaultTreeCellEditor(treeCriteria, 
+			(DefaultTreeCellRenderer)treeCriteria.getCellRenderer(), 
+			new SearchTreeCellEditor()));
 	}
 
 	private static class SearchTreeNode extends DefaultMutableTreeNode {
 		private static final long serialVersionUID = 1L;
 
-		public SearchTreeNode() { }
-		public SearchTreeNode(Object userObject, boolean allowsChildren) {
+		public SearchTreeNode(SearchCriteria userObject, boolean allowsChildren) {
 			super(userObject, allowsChildren);
 		}
-		public SearchTreeNode(Object userObject) {
+		public SearchTreeNode(SearchCriteria userObject) {
 			super(userObject);
 		}
 		
@@ -279,6 +261,13 @@ public class SearchPanel extends JPanel {
 		public SearchCriteria asSearchCriteria() { return (SearchCriteria)userObject; }
 		
 		@Override
+		public void setUserObject(Object userObject) {
+			if( !(userObject instanceof SearchCriteria) )
+				throw new RuntimeException("Tried to set type: " + userObject.getClass());
+			super.setUserObject(userObject);
+		}
+		
+		@Override
 		public String toString() {
 			if( userObject instanceof SearchWhere )
 				return "Group (" + ((SearchWhere)userObject).getMethod() + ")";
@@ -286,28 +275,34 @@ public class SearchPanel extends JPanel {
 				SingleCriteria criteria = (SingleCriteria)userObject;
 				return "Criteria: " + criteria.getSchemeField() + " " + criteria.getOperator() + " " + criteria.getValue();
 			}
-			return super.toString();
+			throw new RuntimeException("Unexpected type: " + userObject.getClass());
 		}
 	}
 	
 	public static void main(String[] args) {
 		
 		UILib.setPlatformLookAndFeel();
+		try {
+			NimbusLookAndFeel nimbus = new NimbusLookAndFeel();
+			UIManager.setLookAndFeel(nimbus);
+		} catch( Exception e ) {
+			e.printStackTrace();
+		}
 		
 		final SearchPanel view = new SearchPanel();
 		JFrame frame = new JFrame("blah");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().add(view);
 		
-		frame.addComponentListener(new ComponentAdapter() {
-			@Override
-			public void componentMoved(ComponentEvent e) {
-				System.out.println("SearchWhere: ");
-				System.out.println(view.rootSearchGroup);
-				SearchWhere root = view.rootSearchGroup;
-				System.out.println(root);
-			}
-		});
+//		frame.addComponentListener(new ComponentAdapter() {
+//			@Override
+//			public void componentMoved(ComponentEvent e) {
+//				System.out.println("SearchWhere: ");
+//				System.out.println(view.rootSearchGroup);
+//				SearchWhere root = view.rootSearchGroup;
+//				System.out.println(root);
+//			}
+//		});
 
 		frame.pack();
 		frame.setVisible(true);

@@ -15,6 +15,8 @@ import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 import javax.swing.JButton;
 import java.awt.Font;
 import java.awt.Insets;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 
 public class SingleCriteriaPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -23,13 +25,15 @@ public class SingleCriteriaPanel extends JPanel {
 	private JTextField txtFieldValue;
 	private JComboBox cmbOperator;
 	private JButton btnDelete;
+	
+	private KeyHandler keyHandler = new KeyHandler();
 
 	/**
 	 * Create the panel.
 	 */
 	public SingleCriteriaPanel() {
 		setMaximumSize(new Dimension(32767, 20));
-		setMinimumSize(new Dimension(130, 12));
+		setMinimumSize(new Dimension(0, 0));
 		setLayout(new GridLayout(0, 1, 0, 0));
 		
 		Box horizontalBox = Box.createHorizontalBox();
@@ -40,9 +44,10 @@ public class SingleCriteriaPanel extends JPanel {
 		txtSchemeField.setFont(new Font("Dialog", Font.PLAIN, 10));
 		horizontalBox.add(txtSchemeField);
 		txtSchemeField.setToolTipText("The xNAT scheme field to match.");
-		txtSchemeField.setPreferredSize(new Dimension(50, 12));
-		txtSchemeField.setMinimumSize(new Dimension(50, 12));
+		txtSchemeField.setPreferredSize(new Dimension(50, 14));
+		txtSchemeField.setMinimumSize(new Dimension(50, 14));
 		txtSchemeField.setColumns(10);
+		txtSchemeField.addKeyListener(keyHandler);
 		
 		Component horizontalStrut = Box.createHorizontalStrut(10);
 		horizontalStrut.setPreferredSize(new Dimension(2, 0));
@@ -50,12 +55,14 @@ public class SingleCriteriaPanel extends JPanel {
 		horizontalBox.add(horizontalStrut);
 		
 		cmbOperator = new JComboBox();
-		cmbOperator.setMinimumSize(new Dimension(32, 16));
+		cmbOperator.setPreferredSize(new Dimension(50, 14));
+		cmbOperator.setMinimumSize(new Dimension(50, 14));
 		cmbOperator.setFont(new Font("Dialog", Font.BOLD, 10));
 		cmbOperator.setModel(new DefaultComboBoxModel(CompareOperator.values()));
 		horizontalBox.add(cmbOperator);
 		cmbOperator.setToolTipText("The comparison operator.");
-		cmbOperator.setMaximumSize(new Dimension(32, 18));
+		cmbOperator.setMaximumSize(new Dimension(64, 18));
+		cmbOperator.addKeyListener(keyHandler);
 		
 		Component horizontalStrut_1 = Box.createHorizontalStrut(10);
 		horizontalStrut_1.setPreferredSize(new Dimension(2, 0));
@@ -67,9 +74,10 @@ public class SingleCriteriaPanel extends JPanel {
 		txtFieldValue.setFont(new Font("Dialog", Font.PLAIN, 10));
 		horizontalBox.add(txtFieldValue);
 		txtFieldValue.setToolTipText("The value to compare with the field value.");
-		txtFieldValue.setPreferredSize(new Dimension(50, 12));
-		txtFieldValue.setMinimumSize(new Dimension(50, 12));
+		txtFieldValue.setPreferredSize(new Dimension(50, 14));
+		txtFieldValue.setMinimumSize(new Dimension(50, 14));
 		txtFieldValue.setColumns(10);
+		txtFieldValue.addKeyListener(keyHandler);
 		
 		Component horizontalStrut_2 = Box.createHorizontalStrut(20);
 		horizontalBox.add(horizontalStrut_2);
@@ -117,6 +125,14 @@ public class SingleCriteriaPanel extends JPanel {
 		txtSchemeField.setText(criteria.getSchemeField());
 		txtFieldValue.setText(criteria.getValue());
 		cmbOperator.setSelectedItem(criteria.getOperator());
+	}
+	
+	/** Pass child key events through this panel. */
+	private class KeyHandler extends KeyAdapter {
+		@Override
+		public void keyPressed(KeyEvent e) {
+			SingleCriteriaPanel.this.processKeyEvent(e);
+		}
 	}
 
 }
