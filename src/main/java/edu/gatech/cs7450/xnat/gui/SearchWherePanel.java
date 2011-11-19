@@ -22,6 +22,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 
+import prefuse.util.ui.UILib;
+
 import edu.gatech.cs7450.xnat.SearchCriteria;
 import edu.gatech.cs7450.xnat.SearchWhere;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
@@ -38,6 +40,9 @@ public class SearchWherePanel extends JPanel {
 	private JButton btnDelete;
 	
 	public static void main(String[] args) {
+		
+		UILib.setPlatformLookAndFeel();
+		
 		final SearchWherePanel view = new SearchWherePanel();
 		JFrame frame = new JFrame("blah");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

@@ -42,6 +42,11 @@ public class SingleCriteria extends SearchCriteria {
 	
 	/** The value to match. */
 	private String value;
+	
+	/** Creates a new single-criteria search criteria with default (blanks and less-than operator) values. */
+	public SingleCriteria() {
+		this("", CompareOperator.LESS, "");
+	}
 
 	/**
 	 * Creates a new single-criteria search criteria.

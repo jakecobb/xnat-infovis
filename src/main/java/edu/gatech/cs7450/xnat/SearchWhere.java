@@ -30,6 +30,13 @@ public class SearchWhere extends SearchCriteria {
 	private List<SearchCriteria> criteria;
 	
 	/**
+	 * Creates an <code>AND</code> group with no initial criteria.
+	 */
+	public SearchWhere() {
+		this(SearchMethod.AND);
+	}
+	
+	/**
 	 * Creates a new search group.
 	 * 
 	 * @param method    the search method (logical AND or OR)
