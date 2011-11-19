@@ -90,6 +90,11 @@ public class SearchPanel extends JPanel {
 							// and as node in the tree
 							SearchTreeNode newNode = new SearchTreeNode(newCriteria, false);
 							treeModel.insertNodeInto(newNode, node, node.getChildCount());
+							
+							// show and start editing
+							TreePath newPath = new TreePath(newNode.getPath());
+							treeCriteria.scrollPathToVisible(newPath);
+							treeCriteria.startEditingAtPath(newPath);
 						}
 					});
 					
@@ -104,6 +109,11 @@ public class SearchPanel extends JPanel {
 							// and as node in the tree
 							SearchTreeNode newNode = new SearchTreeNode(newWhere, true);
 							treeModel.insertNodeInto(newNode, node, node.getChildCount());
+							
+							// show and start editing
+							TreePath newPath = new TreePath(newNode.getPath());
+							treeCriteria.scrollPathToVisible(newPath);
+							treeCriteria.startEditingAtPath(newPath);
 						}
 					});
 					
@@ -251,7 +261,8 @@ public class SearchPanel extends JPanel {
 			super(userObject, allowsChildren);
 		}
 		public SearchTreeNode(SearchCriteria userObject) {
-			super(userObject);
+			// children only for SearchWhere
+			super(userObject, userObject instanceof SearchWhere);
 		}
 		
 		public boolean isSearchWhere() { return userObject instanceof SearchWhere; }
@@ -273,7 +284,8 @@ public class SearchPanel extends JPanel {
 				return "Group (" + ((SearchWhere)userObject).getMethod() + ")";
 			if( userObject instanceof SingleCriteria ) {
 				SingleCriteria criteria = (SingleCriteria)userObject;
-				return "Criteria: " + criteria.getSchemeField() + " " + criteria.getOperator() + " " + criteria.getValue();
+				return "\"" + criteria.getSchemeField() + "\" " + criteria.getOperator() + " \"" 
+					+ criteria.getValue() + "\"";
 			}
 			throw new RuntimeException("Unexpected type: " + userObject.getClass());
 		}
