@@ -1,41 +1,45 @@
 package edu.gatech.cs7450.xnat.gui;
 
+import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.swing.AbstractCellEditor;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JTree;
-import javax.swing.UIManager;
+import javax.swing.border.Border;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellEditor;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellEditor;
+import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 
 import prefuse.util.ui.UILib;
-
-import com.sun.java.swing.plaf.nimbus.NimbusLookAndFeel;
-
 import edu.gatech.cs7450.xnat.SearchCriteria;
 import edu.gatech.cs7450.xnat.SearchWhere;
-import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 import edu.gatech.cs7450.xnat.SingleCriteria;
 
 public class SearchPanel extends JPanel {
@@ -168,40 +172,38 @@ public class SearchPanel extends JPanel {
 		private SearchTreeNode searchNode;
 		private SearchCriteria editingCriteria;
 		private SingleCriteriaPanel pnlSingleCriteria;
-		private JComboBox cmbSearchMethod;
+		private SearchMethodPanel pnlSearchMethod;
 				
 		public SearchTreeCellEditor() {
 			pnlSingleCriteria = makeSingleCriteriaPanel();
-			cmbSearchMethod = makeSearchMethodCombo();
+			pnlSearchMethod = makeSearchMethodPanel();
 		}
 		
 		private SingleCriteriaPanel makeSingleCriteriaPanel() {
 			SingleCriteriaPanel panel = new SingleCriteriaPanel();
+			panel.setOpaque(false);
 			panel.addKeyListener(keyHandler);
 			return panel;
 		}
 		
-		private JComboBox makeSearchMethodCombo() {
-			JComboBox searchMethod = new JComboBox();
-			searchMethod = new JComboBox();
-			searchMethod.setModel(new DefaultComboBoxModel(SearchMethod.values()));
-//			searchMethod.setMinimumSize(new Dimension(32, 8));
-			searchMethod.setMinimumSize(null);
-			searchMethod.setMaximumSize(new Dimension(32, 18));
-			searchMethod.setFont(new Font("Dialog", Font.BOLD, 10));
-			searchMethod.putClientProperty("JComboBox.isTreeCellEditor", Boolean.TRUE);
-			
+		private SearchMethodPanel makeSearchMethodPanel() {
+			SearchMethodPanel searchMethod = new SearchMethodPanel();
+			searchMethod.setOpaque(false);
+			searchMethod.putClientProperty("JPanel.isTreeCellEditor", Boolean.TRUE);
+			JComboBox combo = searchMethod.getSearchMethodCombo();
+			combo.putClientProperty("JComboBox.isTreeCellEditor", Boolean.TRUE);
+			JComponent comboEditor = (JComponent)combo.getEditor().getEditorComponent();
+			comboEditor.setBackground(null);
+			comboEditor.setBorder(null);
 			searchMethod.addKeyListener(keyHandler);
-			
-			searchMethod.setOpaque(true);
-			((JComponent)searchMethod.getEditor().getEditorComponent()).setBorder(null);
 			return searchMethod;
 		}
 		
 		@Override
 		public boolean stopCellEditing() {
 			if( editingCriteria.isWhere() ) {
-				((SearchWhere)editingCriteria).setMethod((SearchMethod)cmbSearchMethod.getSelectedItem());
+//				((SearchWhere)editingCriteria).setMethod((SearchMethod)cmbSearchMethod.getSelectedItem());
+				((SearchWhere)editingCriteria).setMethod(pnlSearchMethod.getSearchMethod());
 			} else {
 				pnlSingleCriteria.toSingleCriteria((SingleCriteria)editingCriteria);
 			}
@@ -220,12 +222,75 @@ public class SearchPanel extends JPanel {
 			
 			searchNode = (SearchTreeNode)value;
 			editingCriteria = searchNode.asSearchCriteria();
+			adaptToRendererStyle(tree, value, isSelected, expanded, leaf, row);
 			if( searchNode.isSearchWhere() ) {
-				cmbSearchMethod.setSelectedItem(searchNode.asSearchWhere().getMethod());
-				return cmbSearchMethod;
+				pnlSearchMethod.setSearchMethod(searchNode.asSearchWhere().getMethod());
+				return pnlSearchMethod;
 			} else {
 				pnlSingleCriteria.fromSingleCriteria(searchNode.asSingleCriteria());
 				return pnlSingleCriteria;
+			}
+		}
+		
+		private void adaptToRendererStyle(JTree tree, Object value, boolean isSelected, boolean expanded, boolean leaf, int row) {
+			if( tree == null ) return;
+			TreeCellRenderer rend = tree.getCellRenderer();
+			if( rend == null ) return;
+			
+			Component comp = rend.getTreeCellRendererComponent(tree, value, isSelected, expanded, leaf, row, true);
+			if( comp == null ) {
+				System.err.println("null component");
+				return;
+			}
+			
+			JComponent editComponent = searchNode.isSearchWhere() ? pnlSearchMethod : pnlSingleCriteria;
+			editComponent.setBorder(null);
+			
+			adaptChildrenToRenderer(editComponent, comp);
+		}
+		
+		private void adaptChildrenToRenderer(Component parent, Component rendComp) {
+			Color foreground = rendComp.getForeground();
+			Font font = rendComp.getFont();
+			Dimension rendMin = rendComp.getMinimumSize(),
+			          rendMax = rendComp.getMaximumSize(),
+			         rendPref = rendComp.getPreferredSize();
+			
+			
+			List<Component> components = new ArrayList<Component>();
+			components.add(parent);
+			if( parent instanceof Container )
+				components.addAll(Arrays.asList(((Container)parent).getComponents()));
+			
+			for( Component child : components ) {
+				Dimension childMin = child.getMinimumSize(),
+				          childMax = child.getMaximumSize(),
+				         childPref = child.getPreferredSize();
+				
+				childMin.height = rendMin.height;
+				childMax.height = rendMax.height;
+				
+				child.setMinimumSize(childMin);
+				child.setMaximumSize(childMax);
+				child.setPreferredSize(childPref);
+				
+				// only set font and text color on labels
+				if( child instanceof JLabel ) {
+					child.setForeground(foreground);
+					child.setFont(font);
+				}
+				if( child instanceof JComponent ) {
+					JComponent jchild = (JComponent)child;
+					Border b = jchild.getBorder();
+					if( b != null ) {						
+						Insets in = b.getBorderInsets(jchild);
+						childMax.height -= in.top + in.bottom; 
+						child.setMaximumSize(childMax);
+
+						if( !(jchild instanceof JTextField) )
+							jchild.setBorder(null);
+					}
+				}
 			}
 		}
 		
@@ -294,12 +359,12 @@ public class SearchPanel extends JPanel {
 	public static void main(String[] args) {
 		
 		UILib.setPlatformLookAndFeel();
-		try {
-			NimbusLookAndFeel nimbus = new NimbusLookAndFeel();
-			UIManager.setLookAndFeel(nimbus);
-		} catch( Exception e ) {
-			e.printStackTrace();
-		}
+//		try {
+//			NimbusLookAndFeel nimbus = new NimbusLookAndFeel();
+//			UIManager.setLookAndFeel(nimbus);
+//		} catch( Exception e ) {
+//			e.printStackTrace();
+//		}
 		
 		final SearchPanel view = new SearchPanel();
 		JFrame frame = new JFrame("blah");

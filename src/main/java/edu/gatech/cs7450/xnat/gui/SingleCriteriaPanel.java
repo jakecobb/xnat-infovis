@@ -17,6 +17,8 @@ import java.awt.Font;
 import java.awt.Insets;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.GridBagLayout;
+import java.awt.GridBagConstraints;
 
 public class SingleCriteriaPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -24,7 +26,6 @@ public class SingleCriteriaPanel extends JPanel {
 	private JTextField txtSchemeField;
 	private JTextField txtFieldValue;
 	private JComboBox cmbOperator;
-	private JButton btnDelete;
 	
 	private KeyHandler keyHandler = new KeyHandler();
 
@@ -32,70 +33,74 @@ public class SingleCriteriaPanel extends JPanel {
 	 * Create the panel.
 	 */
 	public SingleCriteriaPanel() {
-		setMaximumSize(new Dimension(32767, 20));
-		setMinimumSize(new Dimension(0, 0));
-		setLayout(new GridLayout(0, 1, 0, 0));
-		
-		Box horizontalBox = Box.createHorizontalBox();
-		add(horizontalBox);
-		
-		txtSchemeField = new JTextField();
-		txtSchemeField.setMaximumSize(new Dimension(2147483647, 18));
-		txtSchemeField.setFont(new Font("Dialog", Font.PLAIN, 10));
-		horizontalBox.add(txtSchemeField);
-		txtSchemeField.setToolTipText("The xNAT scheme field to match.");
-		txtSchemeField.setPreferredSize(new Dimension(50, 14));
-		txtSchemeField.setMinimumSize(new Dimension(50, 14));
-		txtSchemeField.setColumns(10);
-		txtSchemeField.addKeyListener(keyHandler);
-		
-		Component horizontalStrut = Box.createHorizontalStrut(10);
-		horizontalStrut.setPreferredSize(new Dimension(2, 0));
-		horizontalStrut.setMinimumSize(new Dimension(2, 0));
-		horizontalBox.add(horizontalStrut);
-		
-		cmbOperator = new JComboBox();
-		cmbOperator.setPreferredSize(new Dimension(50, 14));
-		cmbOperator.setMinimumSize(new Dimension(50, 14));
-		cmbOperator.setFont(new Font("Dialog", Font.BOLD, 10));
-		cmbOperator.setModel(new DefaultComboBoxModel(CompareOperator.values()));
-		horizontalBox.add(cmbOperator);
-		cmbOperator.setToolTipText("The comparison operator.");
-		cmbOperator.setMaximumSize(new Dimension(64, 18));
-		cmbOperator.addKeyListener(keyHandler);
-		
-		Component horizontalStrut_1 = Box.createHorizontalStrut(10);
-		horizontalStrut_1.setPreferredSize(new Dimension(2, 0));
-		horizontalStrut_1.setMinimumSize(new Dimension(2, 0));
-		horizontalBox.add(horizontalStrut_1);
+		setAlignmentY(Component.TOP_ALIGNMENT);
+		setPreferredSize(new Dimension(300, 24));
+		setMaximumSize(new Dimension(32767, 48));
+		setMinimumSize(new Dimension(300, 12));
+		GridBagLayout gridBagLayout = new GridBagLayout();
+		gridBagLayout.columnWidths = new int[]{0, 0, 0};
+		gridBagLayout.rowHeights = new int[]{0};
+		gridBagLayout.columnWeights = new double[]{0.0, 0.0, 1.0};
+		gridBagLayout.rowWeights = new double[]{0.0, 0.0};
+		setLayout(gridBagLayout);
 		
 		txtFieldValue = new JTextField();
-		txtFieldValue.setMaximumSize(new Dimension(2147483647, 18));
+		GridBagConstraints gbc_txtFieldValue = new GridBagConstraints();
+		gbc_txtFieldValue.fill = GridBagConstraints.VERTICAL;
+		gbc_txtFieldValue.anchor = GridBagConstraints.WEST;
+		gbc_txtFieldValue.insets = new Insets(0, 0, 0, 5);
+		gbc_txtFieldValue.gridx = 2;
+		gbc_txtFieldValue.gridy = 0;
+		add(txtFieldValue, gbc_txtFieldValue);
+		txtFieldValue.setAlignmentX(Component.LEFT_ALIGNMENT);
+		txtFieldValue.setAlignmentY(Component.CENTER_ALIGNMENT);
+		txtFieldValue.setMaximumSize(new Dimension(2147483647, 36));
 		txtFieldValue.setFont(new Font("Dialog", Font.PLAIN, 10));
-		horizontalBox.add(txtFieldValue);
 		txtFieldValue.setToolTipText("The value to compare with the field value.");
-		txtFieldValue.setPreferredSize(new Dimension(50, 14));
-		txtFieldValue.setMinimumSize(new Dimension(50, 14));
+		txtFieldValue.setPreferredSize(new Dimension(100, 24));
+		txtFieldValue.setMinimumSize(new Dimension(100, 14));
 		txtFieldValue.setColumns(10);
 		txtFieldValue.addKeyListener(keyHandler);
 		
-		Component horizontalStrut_2 = Box.createHorizontalStrut(20);
-		horizontalBox.add(horizontalStrut_2);
+		cmbOperator = new JComboBox();
+		GridBagConstraints gbc_cmbOperator = new GridBagConstraints();
+		gbc_cmbOperator.fill = GridBagConstraints.VERTICAL;
+		gbc_cmbOperator.insets = new Insets(0, 0, 0, 5);
+		gbc_cmbOperator.gridx = 1;
+		gbc_cmbOperator.gridy = 0;
+		add(cmbOperator, gbc_cmbOperator);
+		cmbOperator.setAlignmentX(Component.LEFT_ALIGNMENT);
+		cmbOperator.setAlignmentY(Component.CENTER_ALIGNMENT);
+		cmbOperator.setPreferredSize(new Dimension(60, 24));
+		cmbOperator.setMinimumSize(new Dimension(60, 14));
+		cmbOperator.setFont(new Font("Dialog", Font.BOLD, 10));
+		cmbOperator.setModel(new DefaultComboBoxModel(CompareOperator.values()));
+		cmbOperator.setToolTipText("The comparison operator.");
+		cmbOperator.setMaximumSize(new Dimension(80, 36));
+		cmbOperator.addKeyListener(keyHandler);
 		
-		btnDelete = new JButton("x");
-		btnDelete.setMaximumSize(new Dimension(41, 18));
-		btnDelete.setVisible(false);
-		btnDelete.setEnabled(false);
-		btnDelete.setSize(new Dimension(25, 25));
-		btnDelete.setPreferredSize(new Dimension(25, 25));
-		btnDelete.setMinimumSize(new Dimension(25, 12));
-		btnDelete.setMargin(new Insets(0, 0, 0, 0));
-		btnDelete.setFont(new Font("Dialog", Font.BOLD, 18));
-		horizontalBox.add(btnDelete);
+		txtSchemeField = new JTextField();
+		GridBagConstraints gbc_txtSchemeField = new GridBagConstraints();
+		gbc_txtSchemeField.fill = GridBagConstraints.VERTICAL;
+		gbc_txtSchemeField.anchor = GridBagConstraints.EAST;
+		gbc_txtSchemeField.insets = new Insets(0, 0, 0, 5);
+		gbc_txtSchemeField.gridx = 0;
+		gbc_txtSchemeField.gridy = 0;
+		add(txtSchemeField, gbc_txtSchemeField);
+		txtSchemeField.setAlignmentX(Component.LEFT_ALIGNMENT);
+		txtSchemeField.setAlignmentY(Component.CENTER_ALIGNMENT);
+		txtSchemeField.setMaximumSize(new Dimension(2147483647, 36));
+		txtSchemeField.setFont(new Font("Dialog", Font.PLAIN, 10));
+		txtSchemeField.setToolTipText("The xNAT scheme field to match.");
+		txtSchemeField.setPreferredSize(new Dimension(100, 24));
+		txtSchemeField.setMinimumSize(new Dimension(100, 14));
+		txtSchemeField.setColumns(10);
+		txtSchemeField.addKeyListener(keyHandler);
 
 	}
 	
-	public JButton getDeleteButton() { return btnDelete; }
+	// FIXME delete this method
+	public JButton getDeleteButton() { return null; }
 	
 	/**
 	 * Copies the values into a single criteria.
