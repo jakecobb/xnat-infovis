@@ -4,6 +4,8 @@ package edu.gatech.cs7450.xnat;
  * A single search criteria for nesting in a {@link SearchWhere}.
  */
 public class SingleCriteria extends SearchCriteria {
+	private static final long serialVersionUID = 1L;
+
 	/**
 	 * Comparison operators allowed for each search criteria.
 	 */
@@ -63,6 +65,18 @@ public class SingleCriteria extends SearchCriteria {
 	}
 	
 	/**
+	 * Copy constructor.
+	 * 
+	 * @param criteria the criteria to copy, may not be <code>null</code>
+	 */
+	public SingleCriteria(SingleCriteria criteria) {
+		if( criteria == null ) throw new NullPointerException("criteria is null");
+		setSchemeField(criteria.schemeField);
+		setOperator(criteria.operator);
+		setValue(criteria.value);
+	}
+	
+	/**
 	 * Returns the scheme field to match.
 	 * @return the scheme field
 	 */
@@ -115,4 +129,9 @@ public class SingleCriteria extends SearchCriteria {
 
 	@Override 
 	public boolean isWhere() { return false; }
+	
+	@Override
+	public String toString() {
+		return "SingleCriteria(\"" + schemeField + "\" " + operator + " \"" + value + "\")";
+	}
 }
