@@ -6,22 +6,14 @@ import javax.swing.JFrame;
 
 import org.junit.Test;
 
-
-public class ScanGroupViewTest {
+public class ScatterPlotTest {
 	@Test
-	public void testScanGroupView() throws Exception {
-		URL testURL = ScanGroupViewTest.class.getResource("/scan_group_test.xml");
+	public void testScatterPlot() throws Exception {
+		URL csvFile = ScatterPlotTest.class.getResource("/xnat_table.csv");
 		
-		ScanGroupView view = new ScanGroupView(testURL.toURI().toString());
-	
-		final JFrame frame = new JFrame("blah");
+		final JFrame frame = XNATScatterPlot.buildFrame(csvFile.toURI().toString());
 		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		frame.add(view);
-		frame.pack();
 		frame.setVisible(true);
-		
-		view.begin();
-
 		
 		Thread t = new Thread(new Runnable() {
 			public void run() {
