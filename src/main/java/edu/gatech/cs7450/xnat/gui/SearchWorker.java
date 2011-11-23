@@ -1,12 +1,12 @@
 package edu.gatech.cs7450.xnat.gui;
 
-import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.SwingWorker;
 
 import edu.gatech.cs7450.xnat.SearchField;
 import edu.gatech.cs7450.xnat.SearchWhere;
+import edu.gatech.cs7450.xnat.XNATDefaults;
 import edu.gatech.cs7450.xnat.XNATSearch;
 
 public class SearchWorker extends SwingWorker<String, Object> {
@@ -16,17 +16,8 @@ public class SearchWorker extends SwingWorker<String, Object> {
 	private List<SearchField> searchFields;
 	private SearchWhere searchWhere;
 	
-	public static final String DEFAULT_ROOT_EL = "xnat:mrSessionData";
-	public static final List<SearchField> DEFAULT_SEARCH_FIELDS;
-	static {
-		DEFAULT_SEARCH_FIELDS = Arrays.asList(
-			new SearchField("xnat:mrSessionData", "LABEL", "string", "MR ID"),
-			new SearchField("xnat:subjectData", "LABEL", "string", "Subject")
-		);
-	}
-	
 	public SearchWorker(XNATSearch search, SearchWhere where) {
-		this(search, DEFAULT_ROOT_EL, DEFAULT_SEARCH_FIELDS, where);
+		this(search, XNATDefaults.DEFAULT_SEARCH_ROOT, XNATDefaults.DEFAULT_SEARCH_FIELDS, where);
 	}
 
 	public SearchWorker(XNATSearch search, String rootElement, List<SearchField> searchFields, SearchWhere searchWhere) {
