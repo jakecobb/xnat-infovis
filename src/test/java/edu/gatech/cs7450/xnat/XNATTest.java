@@ -1,22 +1,21 @@
 package edu.gatech.cs7450.xnat;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
-import javax.ws.rs.core.Cookie;
-
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.client.filter.HTTPBasicAuthFilter;
 
 import edu.gatech.cs7450.Util;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
+import edu.gatech.cs7450.xnat.XNATSearch.SearchElement;
 
 
 public class XNATTest {
@@ -81,5 +80,29 @@ public class XNATTest {
 		System.out.println(search.createMessage(rootElement, searchFields, searchWhere));
 		System.out.println("RESPONSE: \n");
 		System.out.println(search.doSearch(rootElement, searchFields, searchWhere));
+	}
+	
+	@Test
+	public void testFetchSearchElements() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		List<SearchElement> elements = search.fetchSearchableElements();
+		Assert.assertNotNull("elements is null", elements);
+		
+		HashSet<String> names = new HashSet<String>( (int)(1.5f * elements.size()) );
+		for( SearchElement el : elements ) {
+			Assert.assertNotNull("elements contained null", el);
+			names.add(el.getName());
+		}
+		
+		// check for a couple expected entries
+		for( String name : Arrays.asList("xnat:subjectData", "xnat:projectData", "xnat:mrSessionData") ) {
+			if( !names.contains(name) )
+				Assert.fail("Missing expected search element: " + name);
+		}
+		
+		System.out.println("ELEMENTS:\n");
+		for( SearchElement el : elements )
+			System.out.println(el);
 	}
 }
