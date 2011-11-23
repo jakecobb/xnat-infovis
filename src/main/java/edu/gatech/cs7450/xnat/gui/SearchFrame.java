@@ -233,9 +233,14 @@ public class SearchFrame extends JFrame {
 	
 	private void _saveSearchClicked(ActionEvent e) {
 		String name = (String)cmbSearchName.getSelectedItem();
-		queries.put(name, SearchQuery.getDefault(name, searchPanel.toSearchWhere()));
-		cmbSearchName.addItem(name);
-		_saveQueries();
+		if( name == null || "".equals(name = name.trim()) ) {
+			JOptionPane.showMessageDialog(this, "The search name is empty.", "Empty Name", JOptionPane.ERROR_MESSAGE);
+		} else {
+			SearchQuery oldQuery = queries.put(name, SearchQuery.getDefault(name, searchPanel.toSearchWhere()));
+			if( oldQuery == null )
+				cmbSearchName.addItem(name);
+			_saveQueries();
+		}
 	}
 
 	private void _deleteSearchClicked(ActionEvent e) {
