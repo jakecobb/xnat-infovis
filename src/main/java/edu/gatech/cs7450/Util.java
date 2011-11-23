@@ -1,6 +1,7 @@
 package edu.gatech.cs7450;
 
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
@@ -45,5 +46,32 @@ public class Util {
 		while( -1 < (read = in.read(buffer)) )
 			out.write(buffer, 0, read);
 		return new String(out.toByteArray(), Charset.forName("UTF-8"));
+	}
+
+	/**
+	 * Try to close <code>c</code>, suppressing any exception (but printing the stack trace) and ignoring <code>null</code>.
+	 * 
+	 * @param c the thing to close, may be <code>null</code>
+	 * @return <code>true</code> if an exception occurred
+	 */
+	public static boolean tryClose(Closeable c) { return tryClose(c, true); }
+	
+	/**
+	 * Try to close <code>c</code>, suppressing any exception and ignoring <code>null</code>.
+	 * 
+	 * @param c the thing to close, may be <code>null</code>
+	 * @param printStackTrace if the stack trace of an exception should be printed
+	 * @return <code>true</code> if an exception occurred
+	 */
+	public static boolean tryClose(Closeable c, boolean printStackTrace) {
+		try {
+			if( c != null )
+				c.close();
+			return true;
+		} catch( IOException e ) {
+			if( printStackTrace )
+				e.printStackTrace();
+			return false;
+		}
 	}
 }

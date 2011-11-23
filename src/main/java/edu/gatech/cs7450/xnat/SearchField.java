@@ -1,9 +1,13 @@
 package edu.gatech.cs7450.xnat;
 
+import java.io.Serializable;
+
 /**
  * A field to retrieve for search purposes.
  */
-public class SearchField {
+public class SearchField implements Serializable {
+	private static final long serialVersionUID = 1L;
+	
 	private String elementName, fieldId, type, header;
 
 	public SearchField(String elementName, String fieldId, String type, String header) {

@@ -15,7 +15,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Stack;
 
 import javax.swing.AbstractCellEditor;
 import javax.swing.JComboBox;
@@ -163,6 +165,53 @@ public class SearchPanel extends JPanel {
 		scrollPane.setViewportView(treeCriteria);
 
 		setupTree();
+	}
+	
+	/**
+	 * Reinitializes the panel with the given search contents.  
+	 * The <code>where</code> object is copied and not modified.
+	 * 
+	 * @param where the search contents
+	 * @throws NullPointerException if <code>where</code> is <code>null</code>
+	 */
+	public void fromSearchWhere(SearchWhere where) {
+		System.out.println("SearchPanel.fromSearchWhere(): where = " + where);
+		if( where == null ) throw new NullPointerException("where is null");
+		rootSearchGroup = new SearchWhere(where);
+		_changeTreeRoot();
+	}
+	
+	private void _changeTreeRoot() {
+		assert ((SearchTreeNode)treeModel.getRoot()).asSearchWhere() != rootSearchGroup : "Group already established?";
+
+		SearchTreeNode newRoot = new SearchTreeNode(rootSearchGroup);
+		treeModel.setRoot(newRoot);
+		
+		LinkedList<SearchTreeNode> groups = new LinkedList<SearchTreeNode>();
+		groups.add(newRoot);
+		
+		while( !groups.isEmpty() ) {
+			SearchTreeNode parent = groups.removeFirst();
+			int i = 0;
+			for( SearchCriteria c : parent.asSearchWhere().getCriteria() ) {
+				SearchTreeNode newNode = new SearchTreeNode(c);
+				treeModel.insertNodeInto(newNode, parent, i++);
+				
+				// add its children next, in the order they appear in the parent
+				if( c.isWhere() )
+					groups.add(newNode);
+			}
+		}
+		
+		
+	}
+	
+	/**
+	 * Returns a copy of the current search contents, safe to modify.
+	 * @return the current search contents
+	 */
+	public SearchWhere toSearchWhere() {
+		return new SearchWhere(rootSearchGroup);
 	}
 	
 	private static class SearchTreeCellEditor extends AbstractCellEditor implements TreeCellEditor {
