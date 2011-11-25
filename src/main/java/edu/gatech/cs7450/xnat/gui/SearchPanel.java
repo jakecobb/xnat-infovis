@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Stack;
 
 import javax.swing.AbstractCellEditor;
 import javax.swing.JComboBox;
@@ -231,7 +230,9 @@ public class SearchPanel extends JPanel {
 		private SingleCriteriaPanel makeSingleCriteriaPanel() {
 			SingleCriteriaPanel panel = new SingleCriteriaPanel();
 			panel.setOpaque(false);
-			panel.addKeyListener(keyHandler);
+			panel.getOperator().addKeyListener(keyHandler);
+			panel.getSchemeField().addActionListener(keyHandler);
+			panel.getFieldValue().addActionListener(keyHandler);
 			return panel;
 		}
 		
@@ -241,10 +242,10 @@ public class SearchPanel extends JPanel {
 			searchMethod.putClientProperty("JPanel.isTreeCellEditor", Boolean.TRUE);
 			JComboBox combo = searchMethod.getSearchMethodCombo();
 			combo.putClientProperty("JComboBox.isTreeCellEditor", Boolean.TRUE);
+			combo.addKeyListener(keyHandler);
 			JComponent comboEditor = (JComponent)combo.getEditor().getEditorComponent();
 			comboEditor.setBackground(null);
 			comboEditor.setBorder(null);
-			searchMethod.addKeyListener(keyHandler);
 			return searchMethod;
 		}
 		
@@ -344,7 +345,11 @@ public class SearchPanel extends JPanel {
 		}
 		
 		/** Helper to accept on <code>&lt;ENTER&gt;</code> and cancel on <code>&lt;ESC&gt;</code>. */
-		private class KeyHandler extends KeyAdapter {
+		private class KeyHandler extends KeyAdapter implements ActionListener {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				stopCellEditing();
+			}
 			@Override
 			public void keyPressed(KeyEvent e) {
 				int keyCode = e.getKeyCode();

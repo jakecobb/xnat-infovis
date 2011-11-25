@@ -2,9 +2,11 @@ package edu.gatech.cs7450.xnat.gui;
 
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 
-import javax.swing.Box;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
@@ -12,13 +14,6 @@ import javax.swing.JTextField;
 
 import edu.gatech.cs7450.xnat.SingleCriteria;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
-import javax.swing.JButton;
-import java.awt.Font;
-import java.awt.Insets;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
 
 public class SingleCriteriaPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -27,8 +22,6 @@ public class SingleCriteriaPanel extends JPanel {
 	private JTextField txtFieldValue;
 	private JComboBox cmbOperator;
 	
-	private KeyHandler keyHandler = new KeyHandler();
-
 	/**
 	 * Create the panel.
 	 */
@@ -60,7 +53,6 @@ public class SingleCriteriaPanel extends JPanel {
 		txtFieldValue.setPreferredSize(new Dimension(100, 24));
 		txtFieldValue.setMinimumSize(new Dimension(100, 14));
 		txtFieldValue.setColumns(10);
-		txtFieldValue.addKeyListener(keyHandler);
 		
 		cmbOperator = new JComboBox();
 		GridBagConstraints gbc_cmbOperator = new GridBagConstraints();
@@ -77,7 +69,6 @@ public class SingleCriteriaPanel extends JPanel {
 		cmbOperator.setModel(new DefaultComboBoxModel(CompareOperator.values()));
 		cmbOperator.setToolTipText("The comparison operator.");
 		cmbOperator.setMaximumSize(new Dimension(80, 36));
-		cmbOperator.addKeyListener(keyHandler);
 		
 		txtSchemeField = new JTextField();
 		GridBagConstraints gbc_txtSchemeField = new GridBagConstraints();
@@ -95,13 +86,22 @@ public class SingleCriteriaPanel extends JPanel {
 		txtSchemeField.setPreferredSize(new Dimension(100, 24));
 		txtSchemeField.setMinimumSize(new Dimension(100, 14));
 		txtSchemeField.setColumns(10);
-		txtSchemeField.addKeyListener(keyHandler);
-
 	}
 	
-	// FIXME delete this method
-	public JButton getDeleteButton() { return null; }
+	public JTextField getSchemeField() {
+		return txtSchemeField;
+	}
+
+	public JTextField getFieldValue() {
+		return txtFieldValue;
+	}
 	
+	public JComboBox getOperator() {
+		return cmbOperator;
+	}
+
+
+
 	/**
 	 * Copies the values into a single criteria.
 	 * 
@@ -131,13 +131,4 @@ public class SingleCriteriaPanel extends JPanel {
 		txtFieldValue.setText(criteria.getValue());
 		cmbOperator.setSelectedItem(criteria.getOperator());
 	}
-	
-	/** Pass child key events through this panel. */
-	private class KeyHandler extends KeyAdapter {
-		@Override
-		public void keyPressed(KeyEvent e) {
-			SingleCriteriaPanel.this.processKeyEvent(e);
-		}
-	}
-
 }

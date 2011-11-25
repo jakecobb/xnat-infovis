@@ -4,8 +4,6 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
@@ -24,7 +22,6 @@ public class SearchMethodPanel extends JPanel {
 	
 	private JLabel lblGroup;
 	private JComboBox cmbSearchMethod;
-	private EventHandler eventHandler = new EventHandler();
 
 	/**
 	 * Create the panel.
@@ -50,7 +47,6 @@ public class SearchMethodPanel extends JPanel {
 		cmbSearchMethod.setPreferredSize(new Dimension(70, 24));
 		cmbSearchMethod.setMinimumSize(new Dimension(70, 14));
 		cmbSearchMethod.setModel(new DefaultComboBoxModel(SearchMethod.values()));
-		cmbSearchMethod.addKeyListener(eventHandler);
 		GridBagConstraints gbc_cmbSearchMethod = new GridBagConstraints();
 		gbc_cmbSearchMethod.anchor = GridBagConstraints.WEST;
 		gbc_cmbSearchMethod.gridx = 1;
@@ -73,18 +69,6 @@ public class SearchMethodPanel extends JPanel {
 	public void setSearchMethod(SearchMethod searchMethod) {
 		if( searchMethod == null ) throw new NullPointerException("searchMethod is null");
 		cmbSearchMethod.setSelectedItem(searchMethod);
-	}
-	
-	private class EventHandler extends KeyAdapter {
-		@Override public void keyPressed(KeyEvent e) {
-			SearchMethodPanel.this.processKeyEvent(e);
-		}
-		@Override public void keyReleased(KeyEvent e) {
-			SearchMethodPanel.this.processKeyEvent(e);
-		}
-		@Override public void keyTyped(KeyEvent e) {
-			SearchMethodPanel.this.processKeyEvent(e);
-		}
 	}
 
 }
