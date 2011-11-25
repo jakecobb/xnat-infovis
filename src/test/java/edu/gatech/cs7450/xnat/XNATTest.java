@@ -74,10 +74,9 @@ public class XNATTest {
 			new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.LIKE, "a")
 		));
 		
-		System.out.println("MESSAGE: ");
-		System.out.println(search.createMessage(rootElement, searchFields, searchWhere));
-		System.out.println("RESPONSE: \n");
-		System.out.println(search.doSearch(rootElement, searchFields, searchWhere));
+		String result = search.doSearch(rootElement, searchFields, searchWhere);
+		Assert.assertNotNull("result was null", result);
+		Assert.assertFalse("Result was empty.", result.trim().isEmpty());
 	}
 	
 	@Test
@@ -98,10 +97,6 @@ public class XNATTest {
 			if( !names.contains(name) )
 				Assert.fail("Missing expected search element: " + name);
 		}
-		
-		System.out.println("ELEMENTS:\n");
-		for( SearchElement el : elements )
-			System.out.println(el);
 	}
 	
 	@Test
@@ -112,8 +107,6 @@ public class XNATTest {
 		Assert.assertNotNull("fields is null", fields);
 		Assert.assertFalse("fields is empty", fields.isEmpty());
 		
-		System.out.println("FIELDS:");
-		for( SearchField field : fields )
-			System.out.println(field);
+		// enable DEBUG logging to see the fields
 	}
 }
