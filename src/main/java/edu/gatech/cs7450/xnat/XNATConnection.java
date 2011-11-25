@@ -38,8 +38,9 @@ public class XNATConnection {
 	
 	/**
 	 * (Re)authenticate and store the new session cookie.
+	 * @throws XNATException if the session cookie could not be found
 	 */
-	public void authenticate() {
+	public void authenticate() throws XNATException {
 		ClientResponse response = client.resource(hostBase + "/JSESSION").get(ClientResponse.class);
 		for( Cookie cookie : response.getCookies() ) {
 			if( "JSESSIONID".equals(cookie.getName()) ) {
@@ -48,7 +49,7 @@ public class XNATConnection {
 			}
 		}
 		// FIXME better exception type
-		throw new RuntimeException("JSESSIONID cookie not found, response: " + response);
+		throw new XNATException("JSESSIONID cookie not found, response: " + response);
 	}
 	
 	/**
