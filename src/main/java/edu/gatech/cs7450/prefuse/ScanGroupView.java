@@ -1,13 +1,20 @@
 package edu.gatech.cs7450.prefuse;
 
+/**
+ * The Size of the scan group has been fixed and the colors have been fixed
+ */
+import java.util.Iterator;
+
 import javax.swing.JPanel;
 
+import prefuse.Constants;
 import prefuse.Display;
 import prefuse.Visualization;
 import prefuse.action.Action;
 import prefuse.action.ActionList;
 import prefuse.action.RepaintAction;
 import prefuse.action.assignment.ColorAction;
+import prefuse.action.assignment.DataColorAction;
 import prefuse.action.layout.graph.ForceDirectedLayout;
 import prefuse.activity.Activity;
 import prefuse.controls.DragControl;
@@ -20,11 +27,13 @@ import prefuse.render.DefaultRendererFactory;
 import prefuse.render.LabelRenderer;
 import prefuse.render.RendererFactory;
 import prefuse.util.ColorLib;
+import prefuse.util.PrefuseLib;
 import prefuse.util.force.DragForce;
 import prefuse.util.force.ForceSimulator;
 import prefuse.util.force.NBodyForce;
 import prefuse.util.force.SpringForce;
 import prefuse.visual.EdgeItem;
+import prefuse.visual.NodeItem;
 import prefuse.visual.VisualItem;
 
 public class ScanGroupView extends JPanel {
@@ -33,10 +42,12 @@ public class ScanGroupView extends JPanel {
 	protected Graph graph;
 	protected Visualization vis;
 	protected Display display;
+	protected String m_edgeGroup;
 	
 	public ScanGroupView(String xmlPath) throws DataIOException {
 		graph =  new GraphMLReader().readGraph(xmlPath);
 		createVisualization();
+
 	}
 	
 	public ScanGroupView(Graph graph) {
@@ -72,6 +83,7 @@ public class ScanGroupView extends JPanel {
 	public void begin() {
 		vis.run("color");
 		vis.run("layout");
+		
 	}
 	
 	private static final float 
@@ -95,28 +107,102 @@ public class ScanGroupView extends JPanel {
 				float weight = e.getFloat("weight");
 				return TRANSLATE_WEIGHT + (SCALE_WEIGHT * (1f - (weight / MAX_WEIGHT)));
 			}
+			@Override
+			protected float getMassValue(VisualItem n) {
+				//System.out.println(n.getString(m_nodeGroup));
+		        float size = n.getFloat("size");
+		        if (size == 0.0) {
+		        	size = 1;
+		        }
+		        return size;
+		    }
 		};
+		
+		//Visualization.this.setValue("graph.nodes",node, "size)
+		
+		//SizeAction ndsize = new SizeAction("graph.nodes", 1.0);
+		//actions.add(ndsize);
 		actions.add(layout);
 		actions.add(new RepaintAction());
 		return actions;
 	}
-
+	// setting the nodesize
+ 
+ 
 	protected RendererFactory createRendererFactory() {
 		// Renderers
 		LabelRenderer r = new LabelRenderer("scanGroup");
-		r.setRoundedCorner(20, 20); // round the corners
+		r.setRoundedCorner(40, 40); // round the corners
+	    //System.out.println(vis.size("graph.nodes"));
 		return new DefaultRendererFactory(r);		
 	}
 	
+	
+	
+	//Processing Actions
+	
+	int[] pallete = new int[]{
+		   
+			//ColorLib.rgb(getRed(), getGreen(), getBlue()) 
+			ColorLib.rgb(0, 191, 255) 
+			,ColorLib.rgb(0, 245, 255)
+			,ColorLib.rgb(78, 238, 148)
+			,ColorLib.rgb(255, 255, 0)
+			,ColorLib.rgb(0, 245, 255)
+			,ColorLib.rgb(238, 180, 34)
+			,ColorLib.rgb(255, 69, 0)
+			,ColorLib.rgb(183, 183, 183)
+			,ColorLib.rgb(238, 130, 238)
+			
+			
+	};
+	
 	protected ActionList createColorActions() {
 		
+		//Color for nodes
+	    
+		//Color randCol = createRandomColors(graph.getNodeCount());
+		
+		
+		DataColorAction fill = new DataColorAction("graph.nodes", "color", Constants.NOMINAL, VisualItem.FILLCOLOR, pallete);
 		// Colors for text and edges
 		ColorAction text = new ColorAction("graph.nodes" , VisualItem.TEXTCOLOR, ColorLib.gray(0));
 		ColorAction edges = new ColorAction("graph.edges", VisualItem.STROKECOLOR, ColorLib.gray(200));
 		
+		// Coloring the edges
+		m_edgeGroup = PrefuseLib.getGroupName("graph", Graph.EDGES);
+		 if ( m_edgeGroup != null ) {
+	           Iterator iter = vis.visibleItems(m_edgeGroup);
+	            while ( iter.hasNext() ) {
+	            	//VisualItem item = (VisualItem)iter.next();
+	                EdgeItem  e  = (EdgeItem)iter.next();
+	                NodeItem  n = e.getTargetItem();
+	                //System.out.println(n.getEndFillColor());
+	            }
+	        }
+		
 		ActionList color = new ActionList();
+		color.add(fill);
 		color.add(text);
 		color.add(edges);
 		return color;
 	}
+	
+	/*
+	public Color createRandomColors(int i){
+
+        for (int j = 0; j < i; j++){
+        	int R = (int) (Math.random( )*256);
+    		int G = (int)(Math.random( )*256);
+    		int B= (int)(Math.random( )*256);
+    		
+    		Color randomColor = new Color(R, G, B);
+    		
+    		return randomColor;
+	
+        }
+				
+		
+	}
+	*/
 }
