@@ -1,6 +1,5 @@
 package edu.gatech.cs7450.xnat;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -15,7 +14,6 @@ import com.sun.jersey.api.client.WebResource;
 import edu.gatech.cs7450.Util;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
-import edu.gatech.cs7450.xnat.XNATSearch.SearchElement;
 
 
 public class XNATTest {
@@ -104,5 +102,18 @@ public class XNATTest {
 		System.out.println("ELEMENTS:\n");
 		for( SearchElement el : elements )
 			System.out.println(el);
+	}
+	
+	@Test
+	public void testFetchElementFields() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		List<SearchField> fields = search.fetchElementFields("xnat:projectData");
+		Assert.assertNotNull("fields is null", fields);
+		Assert.assertFalse("fields is empty", fields.isEmpty());
+		
+		System.out.println("FIELDS:");
+		for( SearchField field : fields )
+			System.out.println(field);
 	}
 }
