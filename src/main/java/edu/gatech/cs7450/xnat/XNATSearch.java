@@ -3,11 +3,13 @@ package edu.gatech.cs7450.xnat;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 import org.apache.velocity.Template;
@@ -247,7 +249,189 @@ public class XNATSearch {
 			final String MSG = "Could not parse fields for element: " + elementName;
 			_log.error(MSG, e);
 			throw new XNATException(MSG, e);
+		} catch( RuntimeException e ) {
+			final String MSG = "Unexpected runtime exception.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
 		}
 	}
 	
+	/**
+	 * Fetches the list of projects.
+	 * 
+	 * @return the projects
+	 * @throws XNATException if there is a problem fetching the projects
+	 * @see XNATConstants.Projects#COLUMNS
+	 */
+	public XNATTableResult fetchProjects() throws XNATException {
+		try {
+			String resp = connection.resource("/projects?format=csv").get(String.class);
+			if( _log.isDebugEnabled() )
+				_log.debug("Project response:\n" + resp);
+			
+			
+			return new XNATTableResult(resp);
+			
+		// exception wrapping
+		} catch( UniformInterfaceException e ) {
+			final String MSG = "Projects request failed.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( IOException e ) {
+			final String MSG = "Failed to parse result.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( RuntimeException e ) {
+			final String MSG = "Unexpected runtime exception.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		}
+	}
+	
+	/**
+	 * Fetches all the subjects in table form.
+	 * 
+	 * @return the subjects
+	 * @throws XNATException if there is a problem fetching the subjects
+	 */
+	public XNATTableResult fetchSubjects() throws XNATException {
+		return fetchSubjects(null);
+	}
+	
+	/**
+	 * Fetches a set of subjects in table form, optionally for a given project.
+	 * 
+	 * @param projectID the project ID or <code>null</code> to fetch all subjects
+	 * @return the set of subjects
+	 * @throws XNATException if there is a problem fetching the subjects
+	 * @see XNATConstants.Subjects#COLUMNS
+	 */
+	public XNATTableResult fetchSubjects(String projectID) throws XNATException {
+		try {
+			String webPath = "";
+			if( projectID != null )
+				webPath = "/projects/" + URLEncoder.encode(projectID, "UTF-8");
+			webPath += "/subjects?format=csv";
+			
+			String resp = connection.resource(webPath).get(String.class);
+			if( _log.isDebugEnabled() ) _log.debug("Subject response:\n" + resp);
+			
+			return new XNATTableResult(resp);
+			
+		// exception wrapping
+		} catch( UniformInterfaceException e ) {
+			final String MSG = "Subjects request failed.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( IOException e ) {
+			final String MSG = "Failed to parse result.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( RuntimeException e ) {
+			final String MSG = "Unexpected runtime exception.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		}
+	}
+	
+	/**
+	 * Fetches all experiments in table form.
+	 * 
+	 * @return the experiments
+	 * @throws XNATException if there is any problem fetching experiments
+	 */
+	public XNATTableResult fetchExperiments() throws XNATException {
+		return fetchExperiments(null, null);
+	}
+	
+	/**
+	 * Fetches all experiments in table form, optionally for a project and/or subject.
+	 * 
+	 * @param projectID the project ID or <code>null</code> for any project
+	 * @param subjectId the subject ID or <code>null</code> for any subject
+	 * 
+	 * @return the experiments
+	 * @throws XNATException if there is any problem fetching experiments
+	 * @see XNATConstants.Sessions#COLUMNS
+	 */	
+	public XNATTableResult fetchExperiments(String projectID, String subjectId) throws XNATException {
+		
+		try {
+			String webPath = "";
+			if( projectID != null )
+				webPath = "/projects/" + URLEncoder.encode(projectID, "UTF-8");
+			if( subjectId != null )
+				webPath += "/subjects/" + URLEncoder.encode(subjectId, "UTF-8");
+			webPath += "/experiments?format=csv";
+			
+			String resp = connection.resource(webPath).get(String.class);
+			if( _log.isDebugEnabled() ) _log.debug("Experiment response:\n" + resp);
+			
+			return new XNATTableResult(resp);
+			
+		// exception wrapping
+		} catch( UniformInterfaceException e ) {
+			final String MSG = "Experiments request failed.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( IOException e ) {
+			final String MSG = "Failed to parse result.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( RuntimeException e ) {
+			final String MSG = "Unexpected runtime exception.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		}
+		
+	}
+	
+	/**
+	 * Fetches a set of scans in table form.
+	 * <p>
+	 * If <code>query</code> is not <code>null</code>, the columns will be those of its 
+	 * search fields.  Otherwise, {@link XNATDefaults#DEFAULT_SEARCH_FIELDS} will be used.
+	 * 
+	 * @param query optional query to get columns from (search filter is not currently supported)
+	 * @return the scans
+	 * @throws XNATException if there is a problem fetching the scans
+	 */
+	public XNATTableResult fetchScans(SearchQuery query) throws XNATException {
+		try {
+			final Pattern pattern  = Pattern.compile("xnat:\\w+(/\\w+)*", Pattern.CASE_INSENSITIVE);
+			
+			// build up the query string
+			StringBuilder b = new StringBuilder("/experiments?format=csv&xsiType=xnat:mrSessionData&columns=ID");
+			List<SearchField> searchFields = query != null ? query.getSearchFields() : XNATDefaults.DEFAULT_SEARCH_FIELDS;
+			for( SearchField f : searchFields ) {
+				String summary = f.getSummary();
+				
+				// sanity checks
+				if( summary == null ) {
+					XNATException e = new XNATException("A search field had a null summary.");
+					_log.error(e.getMessage() + ": " + f, e);
+					throw e;
+				}
+				if( !pattern.matcher(summary).matches() )
+					_log.warn("Field summary may not work: " + summary);
+				
+				b.append(',').append(URLEncoder.encode(summary, "UTF-8"));
+			}
+			
+			String resp = connection.resource(b.toString()).get(String.class);
+			if( _log.isDebugEnabled() ) _log.debug("Scan response:\n" + resp);
+			
+			return new XNATTableResult(resp);
+			
+		// exception wrapping
+		} catch( UniformInterfaceException e ) {
+			final String MSG = "Experiments request failed.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( IOException e ) {
+			final String MSG = "Failed to parse result.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} 
+	}
 }

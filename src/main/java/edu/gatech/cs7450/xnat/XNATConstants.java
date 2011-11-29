@@ -55,6 +55,10 @@ public final class XNATConstants {
 		/** The xNAT schema element name. */
 		public static final String ELEMENT = "xnat:subjectData";
 		
+		/** Columns returned by a non-customized subjects REST request. */
+		public static final List<String> COLUMNS = unmodifiableList(asList(
+			"ID","project","label","insert_date","insert_user", "URI"));
+		
 		// available fields, generated from /search/elements/xnat:subjectData
 		public static final SearchField INSERT_DATE = new SearchField("xnat:subjectData", "INSERT_DATE", "date", "Inserted", "Inserted", "xnat:subjectData/meta/insert_date", false, 0);
 		public static final SearchField INSERT_USER = new SearchField("xnat:subjectData", "INSERT_USER", "string", "Creator", "Creator", "xnat:subjectData/meta/insert_user/login", false, 0);

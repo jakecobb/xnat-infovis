@@ -1,19 +1,33 @@
 package edu.gatech.cs7450.xnat;
 
+import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathFactory;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import com.sun.jersey.api.client.WebResource;
 
 import edu.gatech.cs7450.Util;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
+import edu.gatech.cs7450.xnat.XNATConstants.Projects;
+import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
+import edu.gatech.cs7450.xnat.XNATConstants.Subjects;
 
 
 public class XNATTest {
@@ -108,5 +122,100 @@ public class XNATTest {
 		Assert.assertFalse("fields is empty", fields.isEmpty());
 		
 		// enable DEBUG logging to see the fields
+	}
+	
+	@Test
+	public void testFetchAllFields() throws Exception {
+		XNATMetaData meta = new XNATMetaData(conn);
+		
+		List<SearchElement> elements = meta.getSearchElements();
+		Assert.assertNotNull("elements was null", elements);
+		
+		List<SearchField> fields = meta.getAllSearchFields();
+		Assert.assertNotNull("fields was null", fields);
+		Assert.assertTrue("There were fewer fields than elements.", elements.size() < fields.size() );
+	}
+	
+	@Test
+	public void testGetHenryFordScans() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		String rootElement = "xnat:mrSessionData";
+		List<SearchField> searchFields = Arrays.asList(
+			new SearchField("xnat:mrSessionData", "PROJECT", "string", "Project"),
+			new SearchField("xnat:mrSessionData", "LABEL", "string", "MR ID"),
+			new SearchField("xnat:subjectData", "LABEL", "string", "Subject")
+		);
+		SearchWhere searchWhere = new SearchWhere(SearchMethod.AND, Arrays.asList(
+			new SearchWhere(SearchMethod.OR, Arrays.asList(
+				new SingleCriteria("xnat:mrSessionData/sharing/share/project", CompareOperator.EQUAL, "HF_BRN_TUMOR"),
+				new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.EQUAL, "HF_BRN_TUMOR")
+			))
+		));
+		
+		Object result = search.doSearch(rootElement, searchFields, searchWhere);
+		System.out.println("RESULT:\n" + result);
+		
+		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+		docFactory.setNamespaceAware(true);
+		DocumentBuilder builder = docFactory.newDocumentBuilder();
+		Document doc = builder.parse(new ByteArrayInputStream(result.toString().getBytes("UTF-8")));
+		
+		XPath xpath = XPathFactory.newInstance().newXPath();
+		XPathExpression expr = xpath.compile("//columns/column");
+		
+		System.out.println("COLS:");
+		NodeList cols = (NodeList)expr.evaluate(doc, XPathConstants.NODESET);
+		for( int i = 0, ilen = cols.getLength(); i < ilen; ++i ) {
+			Node node = cols.item(i);
+			System.out.println(node);
+			System.out.println(node.getTextContent());
+		}
+		
+		expr = xpath.compile("//rows/row/cell[position()=2 or position()=3]");
+		NodeList data = (NodeList)expr.evaluate(doc, XPathConstants.NODESET);
+		
+		System.out.println("DATA:");
+		for( int i = 0, ilen = data.getLength(); i < ilen; ++i ) {
+			String text = data.item(i).getTextContent();
+			if( (i & 1) != 0 )
+				System.out.print("ID: " + text);
+			else
+				System.out.println(" Session: " + text);
+		}
+	}
+	
+	@Test
+	public void testFetchProjects() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		XNATTableResult result = search.fetchProjects();
+		Assert.assertNotNull("result was null", result);
+		Assert.assertEquals("Expected and actual headers do not match.", Projects.COLUMNS, result.getHeaders());	
+	}
+	
+	@Test
+	public void testFetchExperiments() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		XNATTableResult result = search.fetchExperiments();
+		Assert.assertNotNull("result was null", result);
+		Assert.assertEquals("Expected and actual headers do not match.", Sessions.COLUMNS, result.getHeaders());			
+	}
+	
+	@Test
+	public void testFetchSubjects() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		XNATTableResult result = search.fetchSubjects();
+		Assert.assertNotNull("result was null", result);
+		Assert.assertEquals("Expected and actual headers do not match.", Subjects.COLUMNS, result.getHeaders());	
+	}
+	
+	@Test
+	public void testFetchAllScans() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		XNATTableResult result = search.fetchScans(null);
+		Assert.assertNotNull("result was null", result);
 	}
 }
