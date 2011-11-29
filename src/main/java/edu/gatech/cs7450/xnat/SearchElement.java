@@ -4,6 +4,9 @@ import java.io.Serializable;
 
 /**
  * A search element, as returned by the <code>search/elements</code> REST call.
+ * <p>
+ * Note: Hashing and equality are based solely on the name.
+ * </p>
  */
 public class SearchElement implements Serializable {
 	private static final long serialVersionUID = 1L;
@@ -86,9 +89,37 @@ public class SearchElement implements Serializable {
 		this.name = name;
 	}
 	
+// Object overrides
 	@Override
 	public String toString() {
 		return "SearchElement [name=" + name + ", singular=" + singular + ", plural=" + plural 
 			+ ", secure=" + isSecured + ", count=" + count + "]";
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if( this == obj )
+			return true;
+		if( obj == null )
+			return false;
+		if( getClass() != obj.getClass() )
+			return false;
+		SearchElement other = (SearchElement)obj;
+		if( name == null ) {
+			if( other.name != null )
+				return false;
+		} else if( !name.equals(other.name) )
+			return false;
+		return true;
+	}
+	
+	
 }
