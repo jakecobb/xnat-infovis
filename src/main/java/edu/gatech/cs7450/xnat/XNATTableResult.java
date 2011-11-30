@@ -1,8 +1,13 @@
 package edu.gatech.cs7450.xnat;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -23,11 +28,11 @@ public class XNATTableResult {
 	private static final Logger _log = Logger.getLogger(XNATTableResult.class);
 	
 	/** The headers / column names. */
-	private List<String> headers;
+	protected List<String> headers;
 	/** Map header name to order. */
-	private Map<String, Integer> headerPosition;
+	protected Map<String, Integer> headerPosition;
 	/** The data rows. */
-	private List<XNATTableRow> rows;
+	protected List<? extends XNATTableRow> rows;
 	
 	/**
 	 * Parses a result from the given CSV input.
@@ -36,7 +41,10 @@ public class XNATTableResult {
 	 * @throws IOException if there is an error parsing <code>csvData</code>
 	 */
 	public XNATTableResult(String csvData) throws IOException {
-		this(new StringReader(csvData));
+		if( csvData == null ) throw new NullPointerException("csvData is null");
+		
+		this.parseData(wrapStringData(csvData));
+		this.mapHeaders();
 	}
 	
 	/**
@@ -46,12 +54,43 @@ public class XNATTableResult {
 	 * if needed.
 	 * </p>
 	 * 
-	 * @param reader the reader
+	 * @param input the reader
 	 * @throws IOException if there is an error parsing
 	 * @throws NullPointerException if <code>reader</code> is <code>null</code>
 	 */
-	public XNATTableResult(Reader reader) throws IOException {
-		if( reader == null ) throw new NullPointerException("reader is null");
+	public XNATTableResult(InputStream input) throws IOException {
+		if( input == null ) throw new NullPointerException("reader is null");
+		
+		this.parseData(input);
+		this.mapHeaders();
+	}
+	
+	/** For subclasses to avoid the other constructors. */
+	protected XNATTableResult() { }
+	
+	/**
+	 * Wraps the string in as a UTF-8 encoded input stream.
+	 * 
+	 * @param data the string to wrap
+	 * @return the string as a UTF-8 input stream
+	 */
+	protected InputStream wrapStringData(String data) {
+		ByteBuffer buffer = Charset.forName("UTF-8").encode(data);
+		return new ByteArrayInputStream(buffer.array(), buffer.arrayOffset(), buffer.limit());
+	}
+	
+	/**
+	 * Parses the data. This method is expected to set 
+	 * <code>headers</code> and <code>rows</code> before 
+	 * returning normally.
+	 * 
+	 * @param reader the reader
+	 * @throws IOException if there is an error parsing
+	 */
+	protected void parseData(InputStream in) throws IOException {
+		if( in == null ) throw new NullPointerException("in is null");
+		
+		Reader reader = new BufferedReader(new InputStreamReader(in, Charset.forName("UTF-8")));
 		CSVReader csv = new CSVReader(reader);
 		
 		// read headers
@@ -60,15 +99,25 @@ public class XNATTableResult {
 			throw new IOException("Header fields was null or empty.");
 		
 		headers = new ArrayList<String>(Arrays.asList(fields));
-		headerPosition = new HashMap<String, Integer>();
-		for( int i = 0, ilen = headers.size(); i < ilen; ++i )
-			headerPosition.put(headers.get(i), i);
 		
 		// now create rows
-		rows = new ArrayList<XNATTableRow>();
+		ArrayList<XNATTableRow> rows = new ArrayList<XNATTableRow>();
 		while( null != (fields = csv.readNext()) ) {
 			rows.add(new XNATTableRow(fields));
 		}
+		rows.trimToSize();
+		this.rows = rows;
+	}
+	
+	/**
+	 * Instantiates and populates <code>headerPosition</code>.
+	 * <code>headers</code> is expected to be set before this is 
+	 * called.
+	 */
+	protected void mapHeaders() {
+		headerPosition = new HashMap<String, Integer>();
+		for( int i = 0, ilen = headers.size(); i < ilen; ++i )
+			headerPosition.put(headers.get(i), i);
 	}
 	
 	/**
@@ -79,12 +128,20 @@ public class XNATTableResult {
 		return Collections.unmodifiableList(headers);
 	}
 	
+	/** 
+	 * Returns an unmodifiable view of the rows. 
+	 * @return the rows
+	 */
+	public List<? extends XNATTableRow> getRows() {
+		return Collections.unmodifiableList(rows);
+	}
+	
 	/**
 	 * A row of result data.
 	 */
 	public class XNATTableRow {
 		/** The data values. */
-		private List<String> values;
+		protected List<String> values;
 		
 		/**
 		 * Creates a new data row.
@@ -92,8 +149,10 @@ public class XNATTableResult {
 		 */
 		public XNATTableRow(Collection<String> values) {
 			if( values == null ) throw new NullPointerException("values is null");
-			if( values.size() != headers.size() )
+			if( values.size() != headers.size() ) {
 				_log.warn("Mismatch in length of headers (" + headers.size() + ") and values (" + values.size() + ")");
+				_log.info("Values: " + values);
+			}
 			this.values = new ArrayList<String>(values);
 		}
 		
@@ -101,7 +160,7 @@ public class XNATTableResult {
 		 * Creates a new data row.
 		 * @param values the values
 		 */		
-		public XNATTableRow(String[] values) {
+		public XNATTableRow(String... values) {
 			this(values == null ? null : Arrays.asList(values));
 		}
 		

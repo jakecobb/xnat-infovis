@@ -73,7 +73,7 @@ public class XNATSearch {
 		this.connection = connection;
 	}
 	
-	String createMessage(String rootElement, Collection<SearchField> fields, SearchWhere where) 
+	String createMessage(String rootElement, Collection<? extends SearchField> fields, SearchWhere where) 
 			throws XNATException {
 		try {
 			VelocityContext context = new VelocityContext();
@@ -91,7 +91,86 @@ public class XNATSearch {
 		}
 	}
 	
+	/**
+	 * Executes a search and returns the result set.
+	 * 
+	 * @param query the query containing the root element, search fields, and search criteria to use
+	 * @return the search result
+	 * @throws NullPointerException if <code>query</code> is <code>null</code>
+	 * @throws XNATException if anything goes wrong
+	 */
+	public XNATResultSet runSearch(SearchQuery query) throws XNATException {
+		if( query == null ) throw new NullPointerException("query is null");
+		return runSearch(query.getRootElement(), query.getSearchFields(), query.getSearchWhere());
+	}
 	
+	/**
+	 * Executes a search using default search fields and returns the result set.
+	 * 
+	 * @param where the search criteria
+	 * @return the result set
+	 * @throws NullPointerException if <code>where</code> is <code>null</code>
+	 * @throws XNATException if anything goes wrong
+	 */
+	public XNATResultSet runSearch(SearchWhere where) throws XNATException {
+		if( where == null ) throw new NullPointerException("where is null");
+		return runSearch(XNATDefaults.DEFAULT_SEARCH_ROOT, XNATDefaults.DEFAULT_SEARCH_FIELDS, where);
+	}
+	
+	/**
+	 * Executes a search and returns the result set.
+	 * 
+	 * @param rootElement the root element of the search
+	 * @param fields      the search fields
+	 * @param where       the search criteria
+	 * @return the result set
+	 * @throws NullPointerException if any argument is <code>null</code>
+	 * @throws XNATException if anything goes wrong
+	 */
+	public XNATResultSet runSearch(String rootElement, Collection<? extends SearchField> fields, SearchWhere where) 
+			throws XNATException {
+		if( rootElement == null ) throw new NullPointerException("rootElement is null");
+		if( fields == null )      throw new NullPointerException("fields is null");
+		if( where == null )       throw new NullPointerException("where is null");
+		
+		final boolean _debug = _log.isDebugEnabled();
+		if( _log.isTraceEnabled() ) {
+			_log.trace("rootElement: " + rootElement);
+			_log.trace("     fields: " + fields);
+			_log.trace("      where: " + where);
+		}
+		
+		try {
+			// prepare to POST the query
+			WebResource.Builder search = this.connection.resource("/search?format=xml");
+			String query = createMessage(rootElement, fields, where);
+			if( _debug ) _log.debug("Sending search query: " + query);
+			
+			// POST it
+			String resp = search.accept("text/xml", "application/xml")
+				.entity(query, "text/xml")
+				.post(String.class);
+			if( _debug ) _log.debug("Search response: " + resp);
+			
+			return new XNATResultSet(resp);
+			
+		} catch( UniformInterfaceException e ) {
+			final String MSG = "Search request failed.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( IOException e ) {
+			final String MSG = "Error parsing search response.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		} catch( RuntimeException e ) {
+			final String MSG = "Unexpected runtime exception during search processing.";
+			_log.error(MSG, e);
+			throw new XNATException(MSG, e);
+		}
+	}
+	
+	/** @deprecated Use <code>runSearch</code> */
+	@Deprecated
 	public String doSearch(String rootElement, Collection<SearchField> fields, SearchWhere where) 
 			throws XNATException {
 		final boolean _debug = _log.isDebugEnabled();
@@ -113,7 +192,7 @@ public class XNATSearch {
 			throw new XNATException(MSG, e);
 		}
 	}
-	
+
 	/**
 	 * Fetches the set of searchable elements from xNAT.
 	 * 

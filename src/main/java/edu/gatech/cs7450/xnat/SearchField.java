@@ -1,12 +1,87 @@
 package edu.gatech.cs7450.xnat;
 
 import java.io.Serializable;
+import java.lang.reflect.Field;
+
+import org.apache.log4j.Logger;
+
+import edu.gatech.cs7450.xnat.XNATConstants.Projects;
+import edu.gatech.cs7450.xnat.XNATConstants.Scans;
+import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
+import edu.gatech.cs7450.xnat.XNATConstants.Subjects;
 
 /**
  * A field to retrieve for search purposes.
  */
 public class SearchField implements Serializable {
 	private static final long serialVersionUID = 1L;
+	private static final Logger _log = Logger.getLogger(SearchField.class);
+	
+	/**
+	 * Tries to find the {@link SearchField} constant in one of the {@link XNATConstants} subclasses 
+	 * for the given element.
+	 * 
+	 * @param elName the element name, should not be <code>null</code>
+	 * @param id     the element id, should not be <code>null</code>
+	 * @return the search field if found, or <code>null</code> if it could not be determined
+	 * @throws NullPointerException if either argument is <code>null</code>
+	 */
+	public static SearchField findCanonicalSearchField(String elName, String id) {
+		if( elName == null ) throw new NullPointerException("elName is null");
+		if( id == null ) throw new NullPointerException("id is null");
+		
+		// find the class
+		Class<?> keyClass = null;
+		if( Projects.ELEMENT.equalsIgnoreCase(elName) ) {
+			keyClass = Projects.class;
+		} else if ( Subjects.ELEMENT.equalsIgnoreCase(elName) ) {
+			keyClass = Subjects.class;
+		} else if ( Sessions.ELEMENT.equalsIgnoreCase(elName) ) {
+			keyClass = Sessions.class;
+		} else if ( Scans.ELEMENT.equalsIgnoreCase(elName) ) {
+			keyClass = Scans.class;
+		} else {
+			_log.error("Could not match element name: "  + elName);
+			return null;
+		}
+		
+		try {
+			// expecting id to match the field constant
+			Field field = keyClass.getDeclaredField(id);
+			return (SearchField)field.get(null);
+			
+		} catch( NoSuchFieldException e ) {
+			_log.error("No field for " + elName + "/" + id, e);
+		} catch( ClassCastException e ) {
+			_log.error("Field was not a SearchField instance for " + elName + "/" + id, e);
+		} catch( SecurityException e ) {
+			_log.error("Could not access field for " + elName + "/" + id, e);
+		} catch( IllegalAccessException e ) {
+			_log.error("Could not access field for " + elName + "/" + id, e);
+		}
+		return null;
+	}
+	
+	/**
+	 * Tries to find the {@link SearchField} constant in one of the {@link XNATConstants} subclasses 
+	 * for the given element.
+	 * 
+	 * @param field the field, something like <code>xnat:mrSessionData/LABEL</code>.
+	 * @return the field if found, or <code>null</code> if it could not be determined
+	 * @throws IllegalArgumentException if the field is not formatted as expected
+	 * @throws NullPointerException if <code>field</code> is <code>null</code>
+	 */
+	public static SearchField findCanonicalSearchField(String field) {
+		if( field == null ) throw new NullPointerException("field is null");
+		String[] parts = field.split("/", 2);
+		if( parts.length != 2 )
+			throw new IllegalArgumentException("Bad format for field: " + field);
+
+		// force second part to match field name convention
+		parts[1] = parts[1].toUpperCase().replace('/', '_');
+		
+		return findCanonicalSearchField(parts[0], parts[1]);
+	}
 	
 	private String elementName, fieldId, type, header;
 	
@@ -62,7 +137,18 @@ public class SearchField implements Serializable {
 		this.source = source;
 	}
 
-
+	/**
+	 * Returns the canonical instance of this field, if it exists.
+	 * @return the canonical version or <code>null</code> if it doesn't exist
+	 */
+	public SearchField toCanonical() {
+		try {
+			return findCanonicalSearchField(elementName, fieldId);
+		} catch( NullPointerException e ) {
+			_log.error("NPE looking for canonical version of: " + this, e);
+			return null;
+		}
+	}
 
 	public String getFieldId() {
 		return fieldId;

@@ -59,6 +59,10 @@ public final class XNATConstants {
 		public static final List<String> COLUMNS = unmodifiableList(asList(
 			"ID","project","label","insert_date","insert_user", "URI"));
 		
+		// present but not reflected
+		public static final SearchField LABEL = 
+			new SearchField("xnat:subjectData", "LABEL", "string", "SUBJECT ID", "Subject Label", "xnat:subjectData/LABEL", false, 0);
+		
 		// available fields, generated from /search/elements/xnat:subjectData
 		public static final SearchField INSERT_DATE = new SearchField("xnat:subjectData", "INSERT_DATE", "date", "Inserted", "Inserted", "xnat:subjectData/meta/insert_date", false, 0);
 		public static final SearchField INSERT_USER = new SearchField("xnat:subjectData", "INSERT_USER", "string", "Creator", "Creator", "xnat:subjectData/meta/insert_user/login", false, 0);
@@ -123,6 +127,10 @@ public final class XNATConstants {
 		public static final List<String> COLUMNS = unmodifiableList(asList(
 			"ID","project","date","xsiType","label","insert_date","URI"));
 		
+		// this one is present but not reflected
+		public static final SearchField LABEL = 
+			new SearchField("xnat:mrSessionData", "LABEL", "string", "MR ID", "MR Session Label", "xnat:mrSessionData/LABEL", false, 0);
+		
 		// available fields, generated from the /search/elements/xnat:mrSessionData response
 		public static final SearchField SESSION_ID = new SearchField("xnat:mrSessionData", "SESSION_ID", "string", "Session", "MR Session Accession Number", "xnat:mrSessionData/ID", false, 0);
 		public static final SearchField SUBJECT_ID = new SearchField("xnat:mrSessionData", "SUBJECT_ID", "string", "Subject", "Subject Accession Number", "xnat:mrSessionData/subject_ID", false, 0);
@@ -155,7 +163,12 @@ public final class XNATConstants {
 	 * <p><strong>Do not mutate the <code>SearchField</code> constants.</strong></p>
 	 */
 	public static final class Scans {
+		/** The xNAT schema element. */
 		public static final String ELEMENT = "xnat:mrScanData";
+		
+		// present but not reflected
+		public static final SearchField LABEL = 
+			new SearchField("xnat:mrScanData", "LABEL", "string", "SCAN ID", "Scan Label", "xnat:mrScanData/LABEL", false, 0);
 		
 		// available fields, these were generated from the /search/elements/xnat:mrScanData response 
       public static final SearchField IMAGE_SESSION_ID = new SearchField("xnat:mrScanData", "IMAGE_SESSION_ID", "string", "image_session_ID", "image_session_ID", "xnat:mrScanData/image_session_ID", false, 0);

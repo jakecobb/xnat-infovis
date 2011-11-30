@@ -28,6 +28,7 @@ import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 import edu.gatech.cs7450.xnat.XNATConstants.Projects;
 import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
 import edu.gatech.cs7450.xnat.XNATConstants.Subjects;
+import edu.gatech.cs7450.xnat.XNATResultSet.XNATResultSetRow;
 
 
 public class XNATTest {
@@ -88,9 +89,15 @@ public class XNATTest {
 			new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.LIKE, "a")
 		));
 		
-		String result = search.doSearch(rootElement, searchFields, searchWhere);
+		XNATResultSet result = search.runSearch(rootElement, searchFields, searchWhere);
 		Assert.assertNotNull("result was null", result);
-		Assert.assertFalse("Result was empty.", result.trim().isEmpty());
+		
+		// FIXME: subjectData/LABEL is not returned in the search results
+		for( SearchField f : searchFields ) {
+			SearchField canonical = f.toCanonical();
+			Assert.assertNotNull("No canonical instance of: " + f, canonical);
+			Assert.assertTrue("Missing expected field: " + canonical, result.isHeaderField(canonical));
+		}
 	}
 	
 	@Test
@@ -181,6 +188,36 @@ public class XNATTest {
 				System.out.print("ID: " + text);
 			else
 				System.out.println(" Session: " + text);
+		}
+	}
+	
+	@Test
+	public void testNewSearchResult() throws Exception {
+		XNATSearch search = new XNATSearch(conn);
+		
+		SearchWhere searchWhere = new SearchWhere(SearchMethod.AND, Arrays.asList(
+			new SearchWhere(SearchMethod.OR, Arrays.asList(
+				new SingleCriteria("xnat:mrSessionData/sharing/share/project", CompareOperator.EQUAL, "HF_BRN_TUMOR"),
+				new SingleCriteria("xnat:mrSessionData/PROJECT", CompareOperator.EQUAL, "HF_BRN_TUMOR")
+			))
+		));
+		
+		XNATResultSet result = search.runSearch(XNATDefaults.DEFAULT_SEARCH_ROOT, 
+			XNATDefaults.DEFAULT_SEARCH_FIELDS, searchWhere);
+		Assert.assertNotNull("result was null", result);
+		
+		for( SearchField f : XNATDefaults.DEFAULT_SEARCH_FIELDS ) {
+			Assert.assertTrue("Missing expected field: " + f, result.isHeaderField(f));
+		}
+		
+		List<String> headers = result.getHeaders();
+		List<SearchField> headerFields = result.getHeaderFields();
+		final int numCols = headers.size();
+		Assert.assertEquals("headers and headerFields size mismatch.", numCols, headerFields.size());
+		
+		int i = 0;
+		for( XNATResultSetRow row : result.getRows() ) {
+			Assert.assertEquals("Row " + (++i) + " num vals mismatch.", numCols, row.getValues().size());
 		}
 	}
 	
