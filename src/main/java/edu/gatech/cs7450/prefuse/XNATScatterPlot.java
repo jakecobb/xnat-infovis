@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
@@ -30,9 +32,12 @@ import prefuse.action.assignment.DataColorAction;
 import prefuse.action.assignment.DataShapeAction;
 import prefuse.action.assignment.DataSizeAction;
 import prefuse.action.assignment.ShapeAction;
+import prefuse.action.distortion.Distortion;
+import prefuse.action.distortion.FisheyeDistortion;
 import prefuse.action.filter.VisibilityFilter;
 import prefuse.action.layout.AxisLabelLayout;
 import prefuse.action.layout.AxisLayout;
+import prefuse.controls.AnchorUpdateControl;
 import prefuse.controls.Control;
 import prefuse.controls.ControlAdapter;
 import prefuse.controls.ToolTipControl;
@@ -40,8 +45,10 @@ import prefuse.data.Table;
 import prefuse.data.expression.AndPredicate;
 import prefuse.data.io.CSVTableReader;
 import prefuse.data.io.DelimitedTextTableReader;
+import prefuse.data.query.ListQueryBinding;
 import prefuse.data.query.RangeQueryBinding;
 import prefuse.data.query.SearchQueryBinding;
+import prefuse.demos.XNATscatterviz.Counter;
 import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.AxisRenderer;
 import prefuse.render.Renderer;
@@ -80,9 +87,7 @@ public class XNATScatterPlot extends JPanel {
     /*
      * load the data and generate the frame that contains the visualization
      */
-    public static JFrame buildFrame(String filePath) {
-    	if( filePath == null )
-    		filePath = "/xnat_table.csv";
+    public static JFrame buildFrame() {
         // load the data
         Table t = null;
         try {
@@ -97,7 +102,7 @@ public class XNATScatterPlot extends JPanel {
         JFrame frame = new JFrame("XNAT Visualizer");
 
         // add in the visualization contents (calls the constructor for this class)
-        frame.setContentPane(new XNATScatterPlot(t));
+        frame.setContentPane(new XNATscatterviz(t));
 
         // pack the elements in the frame and return
         frame.pack();
@@ -128,15 +133,17 @@ public class XNATScatterPlot extends JPanel {
     private String shape_data;
     private String color_data;
     private String squery;
+    private String list_data;
     private String my_group ;
     
     /*
      * Constructor for the class 
      * This is where all the important stuff happens
      */
-    public XNATScatterPlot(Table t) {
+    public XNATscatterviz(Table t) {
         super(new BorderLayout());
-        scatter_set("TE" , "TR" , "FOV" , "Subject" , "Experiments" , "Project" , "xnatdata");
+        //Setting the various filter fields 
+        scatter_set("TE" , "TR" , "FOVx" , "Subject" , "Experiments" , "Project" ,"Subject", "xnatdata");
         /*
          * Step 1: Setup the Visualization
          */
@@ -149,22 +156,32 @@ public class XNATScatterPlot extends JPanel {
         // call our data "xnatdata"
         VisualTable vt = vis.addTable(my_group, t);
         
-        // add a new column containing a label string showing all information for the tooltip TODO: display images!!
+        // add a new column containing a label string showing all information for the tooltip
+        //TODO: display images and format the tooltip display!!
         // note: uses the prefuse expression language
-        vt.addColumn("label", "CONCAT([Project] ,' Subject: ',	[Subject],	[Experiments],	[Scan type],	[Frames Image Type],	[Field Strength],	[Vox. Res.],	[FOV],	[TR],	[TE],	[TI],	[Flip], 	[Image])");
-
+        vt.addColumn("label", "CONCAT('Project : ',[Project] ,' Subject: ',	[Subject],	[Experiments],	[Scan type], [series desc] ,	[Frames Image Type],	[Field Strength], [Quality] , [VRx], [VRy],	[VRz],	[FOVx],	[FOVy],	[TR],	[TE],	[TI],	[Flip], 	[Image])");
+        
         // create a new renderer factory for drawing the visual items
         vis.setRendererFactory(new RendererFactory() {
 
             // specify the default shape renderer (the actions will decide how to actually render the visual elements)
             AbstractShapeRenderer sr = new ShapeRenderer();
             // renderers for the axes
-            Renderer arY = new AxisRenderer(Constants.LEFT, Constants.TOP);
+            Renderer arY = new AxisRenderer(Constants.RIGHT, Constants.TOP);
             Renderer arX = new AxisRenderer(Constants.CENTER, Constants.FAR_BOTTOM);
 
             // return the appropriate renderer for a given visual item
             public Renderer getRenderer(VisualItem item) {
                 return item.isInGroup("ylab") ? arY : item.isInGroup("xlab") ? arX : sr;
+            }
+        });
+        
+        addControlListener(new ControlAdapter() {
+            // dispatch an action event to the menu item
+            public void itemClicked(VisualItem item, MouseEvent e) {
+                ActionListener al = (ActionListener)item.get("action");
+                al.actionPerformed(new ActionEvent(item, e.getID(),
+                    "click", e.getWhen(), e.getModifiers()));
             }
         });
 
@@ -212,6 +229,10 @@ public class XNATScatterPlot extends JPanel {
         // dynamic query based on search criteria specified
         SearchQueryBinding searchQ = new SearchQueryBinding(vt, squery);
         filter.add(searchQ.getPredicate());		// reuse the same filter as the population query
+        
+       
+        ListQueryBinding   subQ    = new ListQueryBinding(vt, list_data);
+        filter.add(subQ.getPredicate());
         /*
          * Step 5: Colours and Shapes
          */
@@ -283,6 +304,18 @@ public class XNATScatterPlot extends JPanel {
         // the user adjusts the axis parameters, or enters a name for filtering), the 
         // visualization is updated
         filter.addExpressionListener(lstnr);
+     // fisheye distortion based on the current anchor location
+        ActionList distort = new ActionList();
+        double m_scale = 7;  
+        Distortion feye = new FisheyeDistortion(m_scale,m_scale);
+        distort.add(feye);
+        //distort.add(colors);
+        distort.add(new RepaintAction());
+        vis.putAction("distort", distort);
+        
+        // update the distortion anchor position to be the current
+        // location of the mouse pointer
+        addControlListener(new AnchorUpdateControl(feye, "distort"));
 
         /*
          * Step 7: Setup the Display and the other Interface components 
@@ -343,6 +376,7 @@ public class XNATScatterPlot extends JPanel {
         };
         g_display.addControlListener(ttc);
         g_display.addControlListener(hoverc); 
+        
 
         // vertical slider for adjusting the population filter (Yaxis display filter on slider)
         JRangeSlider slider = populationQ.createVerticalRangeSlider();
@@ -362,10 +396,15 @@ public class XNATScatterPlot extends JPanel {
             }
         });
 
-        // search box
+        //search box
         JSearchPanel searcher = searchQ.createSearchPanel();
         searcher.setLabelText(squery);
         searcher.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
+        
+        
+     // create dynamic queries
+        
+
         /*
          * Step 8: Create Containers for the Interface Elements
          */
@@ -388,6 +427,7 @@ public class XNATScatterPlot extends JPanel {
         bottomContainer.add(searcher);
         bottomContainer.add(Box.createHorizontalGlue());
         bottomContainer.add(Box.createHorizontalStrut(5));
+        bottomContainer.add(subQ.createRadioGroup());
         bottomContainer.add(Box.createHorizontalStrut(16));
 
         // fonts, colours, etc.
@@ -412,13 +452,18 @@ public class XNATScatterPlot extends JPanel {
 
     }
 
-    /*
+    private void addControlListener(ControlAdapter controlAdapter) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	/*
      * calculate the sizes of the data and axes containers based on the
      * display size, and then tell the visualization to update itself and
      * re-draw the x-axis labels
      */
     /* Parameters passed from our Swing interface*/
-    public void scatter_set(String x_data,String y_data,String siz_data,String shp_data,String clr_data,String sqy,String mgp){
+    public void scatter_set(String x_data,String y_data,String siz_data,String shp_data,String clr_data,String sqy,String ldata,String mgp){
     	System.out.println("!!!!!!!!!!!!!Inside setter!!!!!!!!!!!!\n");  
     	xdata = x_data;
     	  ydata=y_data;
@@ -426,6 +471,7 @@ public class XNATScatterPlot extends JPanel {
     	  shape_data=shp_data;
     	  color_data=clr_data;
     	  squery = sqy;
+    	  list_data = ldata;
     	  my_group = mgp ;
     			
     }
