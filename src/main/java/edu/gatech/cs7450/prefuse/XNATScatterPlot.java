@@ -12,7 +12,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.text.NumberFormat;
-import java.util.Iterator;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -31,7 +30,6 @@ import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.DataColorAction;
 import prefuse.action.assignment.DataShapeAction;
 import prefuse.action.assignment.DataSizeAction;
-import prefuse.action.assignment.ShapeAction;
 import prefuse.action.distortion.Distortion;
 import prefuse.action.distortion.FisheyeDistortion;
 import prefuse.action.filter.VisibilityFilter;
@@ -44,11 +42,9 @@ import prefuse.controls.ToolTipControl;
 import prefuse.data.Table;
 import prefuse.data.expression.AndPredicate;
 import prefuse.data.io.CSVTableReader;
-import prefuse.data.io.DelimitedTextTableReader;
 import prefuse.data.query.ListQueryBinding;
 import prefuse.data.query.RangeQueryBinding;
 import prefuse.data.query.SearchQueryBinding;
-import prefuse.demos.XNATscatterviz.Counter;
 import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.AxisRenderer;
 import prefuse.render.Renderer;
@@ -87,7 +83,10 @@ public class XNATScatterPlot extends JPanel {
     /*
      * load the data and generate the frame that contains the visualization
      */
-    public static JFrame buildFrame() {
+    public static JFrame buildFrame(String filePath) {
+    	if( filePath == null )
+    		filePath = "/xnat_table.csv";
+    	
         // load the data
         Table t = null;
         try {
@@ -102,7 +101,7 @@ public class XNATScatterPlot extends JPanel {
         JFrame frame = new JFrame("XNAT Visualizer");
 
         // add in the visualization contents (calls the constructor for this class)
-        frame.setContentPane(new XNATscatterviz(t));
+        frame.setContentPane(new XNATScatterPlot(t));
 
         // pack the elements in the frame and return
         frame.pack();
@@ -140,7 +139,7 @@ public class XNATScatterPlot extends JPanel {
      * Constructor for the class 
      * This is where all the important stuff happens
      */
-    public XNATscatterviz(Table t) {
+    public XNATScatterPlot(Table t) {
         super(new BorderLayout());
         //Setting the various filter fields 
         scatter_set("TE" , "TR" , "FOVx" , "Subject" , "Experiments" , "Project" ,"Subject", "xnatdata");
