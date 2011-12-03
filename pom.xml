@@ -65,6 +65,20 @@
       <scope>compile</scope>
     </dependency>
     
+    <!-- experimental: SwingX for autocomplete and such -->
+    <dependency>
+      <groupId>org.swinglabs</groupId>
+      <artifactId>swingx</artifactId>
+      <version>1.6.1</version>
+    </dependency>
+    <!--  JGoodies Swing extras -->
+    <dependency>
+      <groupId>com.jgoodies</groupId>
+      <artifactId>forms</artifactId>
+      <version>1.2.1</version>
+      <scope>compile</scope>
+    </dependency>
+    
     <!-- unit tests -->
     <dependency>
       <groupId>junit</groupId>
