@@ -5,6 +5,9 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Formatter;
 
 /** Static utility methods. */
 public class Util {
@@ -46,6 +49,55 @@ public class Util {
 		while( -1 < (read = in.read(buffer)) )
 			out.write(buffer, 0, read);
 		return new String(out.toByteArray(), Charset.forName("UTF-8"));
+	}
+	
+	/**
+	 * Returns the SHA-1 hash of the input string (UTF-8 encoded) or <code>null</code> 
+	 * if SHA-1 is not supported.
+	 * 
+	 * @param input the input string, may be <code>null</code>
+	 * @return the hash (or <code>null</code> if unsupported)
+	 */
+	public static byte[] sha1(String input) {
+		if( input == null || input.isEmpty() )
+			return new byte[0];
+		try {
+			Charset utf8 = Charset.forName("UTF-8");
+			return MessageDigest.getInstance("SHA-1").digest(input.getBytes(utf8));
+		} catch( NoSuchAlgorithmException e ) {
+			return null;
+		}
+	}
+	
+	/**
+	 * Converts bytes into a hexadecimal string (with no prefix).
+	 * 
+	 * @param bytes the bytes to convert
+	 * @return the string or <code>""</code> if <code>bytes</code> is <code>null</code> or empty
+	 */
+	public static String hex(byte[] bytes) {
+		return hex(null, bytes);
+	}
+	
+	/**
+	 * Converts bytes into a hexadecimal string with the specified prefix.
+	 * 
+	 * @param prefix the prefix, may be <code>null</code>
+	 * @param bytes  the bytes to convert
+	 * @return the string or <code>""</code> if <code>bytes</code> is <code>null</code> or empty
+	 */
+	public static String hex(String prefix, byte[] bytes) {
+		if( bytes == null || bytes.length == 0 )
+			return "";
+		
+		String format = "%02x";
+		if( prefix != null )
+			format = prefix + format;
+		
+		Formatter f = new Formatter();
+		for( byte b : bytes )
+			f.format(format, b);
+		return f.toString();
 	}
 
 	/**

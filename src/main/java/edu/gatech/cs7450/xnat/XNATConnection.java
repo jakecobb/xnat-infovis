@@ -84,6 +84,22 @@ public class XNATConnection implements Serializable {
 		if( sessCookie == null )
 			authenticate();
 	}
+	
+	/**
+	 * Returns the host base, which is the URL for the xNAT REST API.
+	 * @return the host base
+	 */
+	public String getHostBase() {
+		return hostBase;
+	}
+	
+	/**
+	 * Returns the username used to authenticate.
+	 * @return the username
+	 */
+	public String getUser() {
+		return user;
+	}
 
 // Object overrides
 	@Override
