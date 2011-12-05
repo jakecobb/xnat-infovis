@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -25,14 +27,34 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
+import javax.swing.text.TabExpander;
+
+import org.apache.log4j.Logger;
+import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
+
+import prefuse.data.Table;
 
 import edu.gatech.cs7450.Util;
+import edu.gatech.cs7450.prefuse.XNATScatterPlot;
+import edu.gatech.cs7450.prefuse.XNATScatterPlotTableReader;
+import edu.gatech.cs7450.xnat.SearchElement;
+import edu.gatech.cs7450.xnat.SearchField;
 import edu.gatech.cs7450.xnat.SearchQuery;
 import edu.gatech.cs7450.xnat.SearchWhere;
 import edu.gatech.cs7450.xnat.XNATConnection;
+import edu.gatech.cs7450.xnat.XNATDefaults;
+import edu.gatech.cs7450.xnat.XNATMetaData;
+import edu.gatech.cs7450.xnat.XNATResultSet;
 import edu.gatech.cs7450.xnat.XNATSearch;
 
 public class SearchFrame extends JFrame {
+	private static final long serialVersionUID = 1L;
+
+	private static final Logger _log = Logger.getLogger(SearchFrame.class);
+	
+	/** FIXME temporary hard-coded connection */
+	private static XNATConnection conn = new XNATConnection("http://node18.cci.emory.edu:8080/xnat/REST", "nbia", "nbia");
+	private static XNATMetaData metaData = new XNATMetaData(conn);
 	
 	private Preferences preferences = Preferences.userNodeForPackage(SearchFrame.class);
 
@@ -49,6 +71,8 @@ public class SearchFrame extends JFrame {
 	private JTextPane txtSearchResults;
 	private JComboBox cmbSearchName;
 	private JButton btnSaveSearch;
+	private JComboBox cmbRootElement;
+	private JButton btnScatterplot;
 
 	/**
 	 * Launch the application.
@@ -78,7 +102,7 @@ public class SearchFrame extends JFrame {
 		GridBagLayout gbl_contentPane = new GridBagLayout();
 		gbl_contentPane.columnWidths = new int[]{146, 0, 0, 96, 0, 0};
 		gbl_contentPane.rowHeights = new int[]{0, 56, 0, 0};
-		gbl_contentPane.columnWeights = new double[]{1.0, 0.0, 0.0, 0.0, 1.0, 0.0};
+		gbl_contentPane.columnWeights = new double[]{1.0, 1.0, 0.0, 0.0, 1.0, 0.0};
 		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, 1.0};
 		contentPane.setLayout(gbl_contentPane);
 		
@@ -113,12 +137,28 @@ public class SearchFrame extends JFrame {
 		gbc_btnDeleteSearch.gridy = 0;
 		contentPane.add(btnDeleteSearch, gbc_btnDeleteSearch);
 		
+		cmbRootElement = new JComboBox();
+		cmbRootElement.setEditable(true);
+		GridBagConstraints gbc_cmbRootElement = new GridBagConstraints();
+		gbc_cmbRootElement.insets = new Insets(0, 0, 5, 5);
+		gbc_cmbRootElement.fill = GridBagConstraints.HORIZONTAL;
+		gbc_cmbRootElement.gridx = 1;
+		gbc_cmbRootElement.gridy = 1;
+		contentPane.add(cmbRootElement, gbc_cmbRootElement);
+		
 		btnDoSearch = new JButton("Search");
 		GridBagConstraints gbc_btnDoSearch = new GridBagConstraints();
 		gbc_btnDoSearch.insets = new Insets(0, 0, 5, 5);
 		gbc_btnDoSearch.gridx = 4;
 		gbc_btnDoSearch.gridy = 1;
 		contentPane.add(btnDoSearch, gbc_btnDoSearch);
+		
+		btnScatterplot = new JButton("Scatterplot");
+		GridBagConstraints gbc_btnScatterplot = new GridBagConstraints();
+		gbc_btnScatterplot.insets = new Insets(0, 0, 5, 5);
+		gbc_btnScatterplot.gridx = 3;
+		gbc_btnScatterplot.gridy = 2;
+		contentPane.add(btnScatterplot, gbc_btnScatterplot);
 		
 		txtSearchResults = new JTextPane();
 		txtSearchResults.setContentType("text/xml");
@@ -140,15 +180,42 @@ public class SearchFrame extends JFrame {
 		gbc_pnlSearchPanel.gridy = 3;
 		contentPane.add(pnlSearchPanel, gbc_pnlSearchPanel);
 		
+		_init();
+	}
+	
+	private void _init() {
 		_attachListeners();
 		_initSavedQueries();
+		_populateRootElements();
 	}
+	
+	private void _populateRootElements() {
+		ArrayList<SearchElement> elements = 
+				new ArrayList<SearchElement>(metaData.getSearchElements());
+		Collections.sort(elements, new Comparator<SearchElement>() {
+			@Override
+			public int compare(SearchElement o1, SearchElement o2) {
+				assert o1 != null && o2 != null : "arg was null";
+				return o1.getName().compareTo(o2.getName());
+			}
+		});
+		
+		for( SearchElement el : elements )
+			cmbRootElement.addItem(el.getName());
+		AutoCompleteDecorator.decorate(cmbRootElement);
+//		
+//		SortedSet<SearchElement> elements = new LinkedHashSet(metaData.getSearchElements());
+//		for( SearchElement el : metaData.getSearchElements() )
+//			cmbRootElement.addItem(el.getName());
+	}
+	
 	private void _initSavedQueries() {
 		Preferences prefs = preferences.node("queries");
 		byte[] data = prefs.getByteArray("saved_queries", null);
 		if( data == null )
 			return; // no saved queries
 		
+		final String ERR_MSG = "Failed to load saved queries.";
 		ObjectInputStream in = null;
 		try {
 			in = new ObjectInputStream(new ByteArrayInputStream(data));
@@ -159,14 +226,11 @@ public class SearchFrame extends JFrame {
 				cmbSearchName.addItem(search.getName());
 			}
 		} catch( ClassCastException e ) {
-			// FIXME handle this
-			e.printStackTrace();
+			_log.error(ERR_MSG, e);
 		} catch( IOException e ) {
-			// FIXME handle this
-			e.printStackTrace();
+			_log.error(ERR_MSG, e);
 		} catch( ClassNotFoundException e ) {
-			// FIXME handle this
-			e.printStackTrace();
+			_log.error(ERR_MSG, e);
 		} finally {
 			Util.tryClose(in);
 		}		
@@ -174,6 +238,8 @@ public class SearchFrame extends JFrame {
 	
 	private void _saveQueries() {
 		Preferences prefs = preferences.node("queries");
+		
+		final String ERR_MSG = "Failed to save queries.";
 		
 		byte[] bytes = null;
 		ObjectOutputStream out = null;
@@ -189,11 +255,9 @@ public class SearchFrame extends JFrame {
 			prefs.flush();
 			
 		} catch( IOException e ) {
-			// FIXME handle
-			e.printStackTrace();
+			_log.error(ERR_MSG, e);
 		} catch( BackingStoreException e ) {
-			// FIXME handle
-			e.printStackTrace();
+			_log.error(ERR_MSG, e);
 		} finally {
 			Util.tryClose(out);
 		}
@@ -212,6 +276,8 @@ public class SearchFrame extends JFrame {
 					_deleteSearchClicked(e);
 				else if( source == btnLoadSearch )
 					_loadSearchClicked(e);
+				else if( source == btnScatterplot )
+					_openScatterplotClicked(e);
 			}
 		};
 		
@@ -219,6 +285,7 @@ public class SearchFrame extends JFrame {
 		btnSaveSearch.addActionListener(l);
 		btnLoadSearch.addActionListener(l);
 		btnDeleteSearch.addActionListener(l);
+		btnScatterplot.addActionListener(l);
 	}
 	
 	private void _loadSearchClicked(ActionEvent e) {
@@ -255,6 +322,24 @@ public class SearchFrame extends JFrame {
 		cmbSearchName.removeItem(name);
 	}
 	
+	private void _openScatterplotClicked(ActionEvent e) {
+		SearchWhere where = searchPanel.toSearchWhere();
+		
+		XNATSearch search = new XNATSearch(conn);
+		XNATResultSet result = search.runSearch(where);
+		
+		Table table = XNATScatterPlotTableReader.convertResultSet(result);
+
+
+      JFrame frame = new JFrame("XNAT Visualizer");
+
+      frame.setContentPane(new XNATScatterPlot(table));
+      frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+      frame.pack();
+      frame.setVisible(true);
+	}
+	
 	private void _doSearchClicked(ActionEvent e) {
 		long s = System.currentTimeMillis();
 		final SearchWhere where = searchPanel.toSearchWhere();
@@ -264,10 +349,22 @@ public class SearchFrame extends JFrame {
 		// FIXME don't block the GUI thread
 		
 		// FIXME real connection handling
-		XNATConnection conn = new XNATConnection("http://node18.cci.emory.edu:8080/xnat/REST", "nbia", "nbia");
 		XNATSearch search = new XNATSearch(conn);
 		
-		SearchWorker worker = new SearchWorker(search, where) {
+		String rootElement = cmbRootElement.getSelectedItem().toString();
+		
+		List<SearchField> searchFields;
+		searchFields = XNATDefaults.DEFAULT_SEARCH_FIELDS;
+		
+//		searchFields = new ArrayList<SearchField>();//XNATDefaults.DEFAULT_SCAN_FIELDS);
+////		searchFields.add(new SearchField("xnat:projectData", "ID", "string", "Project"));
+//		searchFields.add(new SearchField("xnat:mrSessionData", "LABEL", "string", "MR Session"));
+//		searchFields.add(new SearchField("xnat:subjectData", "ID", "string", "Subject ID"));
+//		searchFields.addAll(XNATDefaults.DEFAULT_SCAN_FIELDS);
+		
+		
+		
+		SearchWorker worker = new SearchWorker(search, rootElement, searchFields, where) {
 			@Override
 			protected void done() {
 				try {
