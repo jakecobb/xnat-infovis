@@ -206,5 +206,38 @@ public class XNATTableResult {
 				throw new IllegalArgumentException("No such header: " + header);
 			return getValue(pos);
 		}
+		
+		/**
+		 * Returns the indexes of columns missing a value in this row, where 
+		 * missing means <code>null</code> or empty.
+		 * 
+		 * @return the indexes
+		 */
+		public List<Integer> getMissingColumns() {
+			final int nHeaders = headers.size();
+			ArrayList<Integer> missing = new ArrayList<Integer>(Math.max(2, nHeaders / 4));
+			for( int i = 0; i < nHeaders; ++i ) {
+				String val = values.get(i);
+				if( val == null || "".equals(val.trim()) )
+					missing.add(i);
+			}
+			
+			return missing;
+			
+		}
+		
+		/**
+		 * Returns a list of headers where the value in this row is 
+		 * missing (<code>null</code> or blank).
+		 * 
+		 * @return the missing headers
+		 */
+		public List<String> getMissingHeaders() {
+			List<Integer> cols = getMissingColumns();
+			ArrayList<String> missing = new ArrayList<String>(cols.size());
+			for( Integer col : cols )
+				missing.add(headers.get(col));
+			return missing;
+		}
 	}
 }

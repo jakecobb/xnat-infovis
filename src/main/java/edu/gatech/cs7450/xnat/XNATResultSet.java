@@ -284,5 +284,26 @@ public class XNATResultSet extends XNATTableResult {
 			assert p >= 0 && p < values.size() : "FIXME: Mapped value is out of range.";
 			return values.get(p);
 		}
+		
+		/**
+		 * Returns the search fields missing a value in this row, where missing 
+		 * means <code>null</code> or blank.
+		 * <p>
+		 * Note this may return fewer results than {@link #getMissingColumns()} and {@link #getMissingHeaders()} 
+		 * when the missing columns are not associated with a search field.
+		 * </p>
+		 * 
+		 * @return the missing search fields
+		 */
+		public List<SearchField> getMissingFields() {
+			List<Integer> cols = getMissingColumns();
+			ArrayList<SearchField> missing = new ArrayList<SearchField>(cols.size());
+			for( Integer col : cols ) {
+				SearchField field = headerFields.get(col);
+				if( field != null )
+					missing.add(field);
+			}
+			return missing;
+		}
 	}
 }
