@@ -45,6 +45,7 @@ import prefuse.data.io.CSVTableReader;
 import prefuse.data.query.ListQueryBinding;
 import prefuse.data.query.RangeQueryBinding;
 import prefuse.data.query.SearchQueryBinding;
+import prefuse.demos.XNATscatterviz.Counter;
 import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.AxisRenderer;
 import prefuse.render.Renderer;
@@ -131,8 +132,6 @@ public class XNATScatterPlot extends JPanel {
     private String size_data;
     private String shape_data;
     private String color_data;
-    private String squery;
-    private String list_data;
     private String my_group ;
     
     /*
@@ -142,7 +141,7 @@ public class XNATScatterPlot extends JPanel {
     public XNATScatterPlot(Table t) {
         super(new BorderLayout());
         //Setting the various filter fields 
-        scatter_set("TE" , "TR" , "FOVx" , "Subject" , "Experiments" , "Project" ,"Subject", "xnatdata");
+        scatter_set("TE" , "TR" , "FOVx" , "Subject" , "Experiments" , "xnatdata");
         /*
          * Step 1: Setup the Visualization
          */
@@ -226,12 +225,12 @@ public class XNATScatterPlot extends JPanel {
          */
 
         // dynamic query based on search criteria specified
-        SearchQueryBinding searchQ = new SearchQueryBinding(vt, squery);
+        SearchQueryBinding searchQ = new SearchQueryBinding(vt, "Project");
         filter.add(searchQ.getPredicate());		// reuse the same filter as the population query
         
+        SearchQueryBinding searchQ1 = new SearchQueryBinding(vt, "Subject");
+        filter.add(searchQ1.getPredicate());		// reuse the same filter as the population query
        
-        ListQueryBinding   subQ    = new ListQueryBinding(vt, list_data);
-        filter.add(subQ.getPredicate());
         /*
          * Step 5: Colours and Shapes
          */
@@ -397,8 +396,12 @@ public class XNATScatterPlot extends JPanel {
 
         //search box
         JSearchPanel searcher = searchQ.createSearchPanel();
-        searcher.setLabelText(squery);
+        searcher.setLabelText("Project");
         searcher.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
+        
+        JSearchPanel searcher1 = searchQ1.createSearchPanel();
+        searcher1.setLabelText("Subject");
+        searcher1.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
         
         
      // create dynamic queries
@@ -424,9 +427,9 @@ public class XNATScatterPlot extends JPanel {
         Box bottomContainer = new Box(BoxLayout.X_AXIS);
         bottomContainer.add(Box.createHorizontalStrut(5));
         bottomContainer.add(searcher);
+        bottomContainer.add(searcher1);
         bottomContainer.add(Box.createHorizontalGlue());
         bottomContainer.add(Box.createHorizontalStrut(5));
-        bottomContainer.add(subQ.createRadioGroup());
         bottomContainer.add(Box.createHorizontalStrut(16));
 
         // fonts, colours, etc.
@@ -462,15 +465,13 @@ public class XNATScatterPlot extends JPanel {
      * re-draw the x-axis labels
      */
     /* Parameters passed from our Swing interface*/
-    public void scatter_set(String x_data,String y_data,String siz_data,String shp_data,String clr_data,String sqy,String ldata,String mgp){
+    public void scatter_set(String x_data,String y_data,String siz_data,String shp_data,String clr_data,String mgp){
     	System.out.println("!!!!!!!!!!!!!Inside setter!!!!!!!!!!!!\n");  
     	xdata = x_data;
     	  ydata=y_data;
     	  size_data = siz_data;
     	  shape_data=shp_data;
     	  color_data=clr_data;
-    	  squery = sqy;
-    	  list_data = ldata;
     	  my_group = mgp ;
     			
     }
@@ -533,3 +534,4 @@ public class XNATScatterPlot extends JPanel {
         }
     }
 }
+
