@@ -27,14 +27,15 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.border.EmptyBorder;
-import javax.swing.text.TabExpander;
 
 import org.apache.log4j.Logger;
 import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
 
+import prefuse.data.Graph;
 import prefuse.data.Table;
-
 import edu.gatech.cs7450.Util;
+import edu.gatech.cs7450.prefuse.ScanGroupView;
+import edu.gatech.cs7450.prefuse.ScanGroupViewLoader;
 import edu.gatech.cs7450.prefuse.XNATScatterPlot;
 import edu.gatech.cs7450.prefuse.XNATScatterPlotTableReader;
 import edu.gatech.cs7450.xnat.SearchElement;
@@ -73,6 +74,7 @@ public class SearchFrame extends JFrame {
 	private JButton btnSaveSearch;
 	private JComboBox cmbRootElement;
 	private JButton btnScatterplot;
+	private JButton btnScanGroups;
 
 	/**
 	 * Launch the application.
@@ -152,6 +154,13 @@ public class SearchFrame extends JFrame {
 		gbc_btnDoSearch.gridx = 4;
 		gbc_btnDoSearch.gridy = 1;
 		contentPane.add(btnDoSearch, gbc_btnDoSearch);
+		
+		btnScanGroups = new JButton("Scan Groups");
+		GridBagConstraints gbc_btnScanGroups = new GridBagConstraints();
+		gbc_btnScanGroups.insets = new Insets(0, 0, 5, 5);
+		gbc_btnScanGroups.gridx = 1;
+		gbc_btnScanGroups.gridy = 2;
+		contentPane.add(btnScanGroups, gbc_btnScanGroups);
 		
 		btnScatterplot = new JButton("Scatterplot");
 		GridBagConstraints gbc_btnScatterplot = new GridBagConstraints();
@@ -278,6 +287,10 @@ public class SearchFrame extends JFrame {
 					_loadSearchClicked(e);
 				else if( source == btnScatterplot )
 					_openScatterplotClicked(e);
+				else if( source == btnScanGroups )
+					_openScanGroupsClicked(e);
+				else
+					_log.warn("Unexpected source: " + source);
 			}
 		};
 		
@@ -286,6 +299,28 @@ public class SearchFrame extends JFrame {
 		btnLoadSearch.addActionListener(l);
 		btnDeleteSearch.addActionListener(l);
 		btnScatterplot.addActionListener(l);
+		btnScanGroups.addActionListener(l);
+	}
+	
+	private void _openScanGroupsClicked(ActionEvent e) {
+		Graph sgGraph = ScanGroupViewLoader.loadSubjects(conn);
+		ScanGroupView view = new ScanGroupView(sgGraph);
+
+		SearchWhere where = searchPanel.toSearchWhere();
+		
+		XNATSearch search = new XNATSearch(conn);
+		XNATResultSet result = search.runSearch(where);
+		
+		ScanGroupViewLoader.addResultAsScanGroup(view, cmbSearchName.getSelectedItem().toString(), result);
+	
+		final JFrame frame = new JFrame("blah");
+		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frame.add(view);
+		frame.pack();
+		frame.setVisible(true);
+		
+		view.begin();
+
 	}
 	
 	private void _loadSearchClicked(ActionEvent e) {

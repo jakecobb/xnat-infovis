@@ -3,9 +3,12 @@ package edu.gatech.cs7450.prefuse;
  * The Size of the scan group has been fixed and the colors have been fixed
  */
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import javax.swing.JPanel;
+
+import org.apache.log4j.Logger;
 
 import prefuse.Constants;
 import prefuse.Display;
@@ -21,8 +24,13 @@ import prefuse.controls.DragControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.ZoomControl;
 import prefuse.data.Graph;
+import prefuse.data.Node;
+import prefuse.data.Table;
+import prefuse.data.column.Column;
+import prefuse.data.event.ColumnListener;
 import prefuse.data.io.DataIOException;
 import prefuse.data.io.GraphMLReader;
+import prefuse.data.tuple.TableTuple;
 import prefuse.render.DefaultRendererFactory;
 import prefuse.render.LabelRenderer;
 import prefuse.render.RendererFactory;
@@ -38,6 +46,7 @@ import prefuse.visual.VisualItem;
 
 public class ScanGroupView extends JPanel {
 	private static final long serialVersionUID = 1L;
+	private static final Logger _log = Logger.getLogger(ScanGroupView.class);
 	
 	protected Graph graph;
 	protected Visualization vis;
@@ -57,7 +66,19 @@ public class ScanGroupView extends JPanel {
 		createVisualization();
 	}
 	
+	private NodeTracker nodeTracker;
+	
+	public Node getNodeForScanGroup(String id) {
+		return nodeTracker.getNodeForScanGroup(id);
+	}
+	
+	public Graph getGraph() {
+		return graph;
+	}
+	
 	protected void createVisualization() {
+		nodeTracker = new NodeTracker();
+		
 		vis = new Visualization();
 		vis.add("graph", graph);
 		vis.setInteractive("graph.nodes", null, true); // allow node interaction
@@ -231,21 +252,73 @@ public class ScanGroupView extends JPanel {
 		
 	}
 	
-	/*
-	public Color createRandomColors(int i){
-
-        for (int j = 0; j < i; j++){
-        	int R = (int) (Math.random( )*256);
-    		int G = (int)(Math.random( )*256);
-    		int B= (int)(Math.random( )*256);
-    		
-    		Color randomColor = new Color(R, G, B);
-    		
-    		return randomColor;
-	
-        }
-				
+	/**
+	 * Track nodes by "scanGroup" value, which is subject-id for subjects and the 
+	 * group name for scan groups.
+	 */
+	private class NodeTracker implements ColumnListener {
+		private HashMap<String, Node> scanGroupToNode = new HashMap<String, Node>();
 		
+		private NodeTracker() {
+			// initialize current mapping
+			for( Iterator<?> iter = graph.getNodes().tuples(); iter.hasNext(); ) {
+				TableTuple tuple = (TableTuple)iter.next();
+				Node node = graph.getNode(tuple.getRow());
+				scanGroupToNode.put(node.getString("scanGroup"), node);
+			}
+			
+			// monitor future changes
+			Table nodeTable = graph.getNodeTable();
+			Column sgCol = nodeTable.getColumn("scanGroup");
+			sgCol.addColumnListener(this);
+		}
+		
+		public Node getNodeForScanGroup(String id) {
+			if( id == null ) throw new NullPointerException("id is null");
+			return scanGroupToNode.get(id);
+		}
+
+
+		@Override
+		public void columnChanged(Column src, int idx, Object prev) {
+			if( _log.isDebugEnabled() )
+				_log.debug("src=" + src + ", idx=" + idx + ", prev=" + prev);
+			
+			if( prev != null )
+				scanGroupToNode.remove(prev);
+			String newId = src.getString(idx);
+			scanGroupToNode.put(newId, graph.getNode(idx));
+		}
+
+		@Override
+		public void columnChanged(Column src, int type, int start, int end) {
+			_log.error("src=" + src + ", type=" + type + ", start=" + start + ", end=" + end);
+			throw new UnsupportedOperationException("FIXME: Not implemented.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, int prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, long prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, float prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, double prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");			
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, boolean prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");			
+		}
 	}
-	*/
 }
