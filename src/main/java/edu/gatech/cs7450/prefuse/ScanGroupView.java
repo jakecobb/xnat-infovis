@@ -1,11 +1,14 @@
 package edu.gatech.cs7450.prefuse;
-
 /**
  * The Size of the scan group has been fixed and the colors have been fixed
  */
+import java.awt.Color;
 import java.util.Iterator;
 
 import javax.swing.JPanel;
+
+import com.sun.corba.se.impl.orbutil.graph.Node;
+import com.sun.org.apache.xerces.internal.impl.xs.opti.DefaultNode;
 
 import prefuse.Constants;
 import prefuse.Display;
@@ -15,12 +18,15 @@ import prefuse.action.ActionList;
 import prefuse.action.RepaintAction;
 import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.DataColorAction;
+import prefuse.action.assignment.SizeAction;
 import prefuse.action.layout.graph.ForceDirectedLayout;
 import prefuse.activity.Activity;
 import prefuse.controls.DragControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.ZoomControl;
+import prefuse.data.Edge;
 import prefuse.data.Graph;
+import prefuse.data.expression.Predicate;
 import prefuse.data.io.DataIOException;
 import prefuse.data.io.GraphMLReader;
 import prefuse.render.DefaultRendererFactory;
@@ -29,6 +35,7 @@ import prefuse.render.RendererFactory;
 import prefuse.util.ColorLib;
 import prefuse.util.PrefuseLib;
 import prefuse.util.force.DragForce;
+import prefuse.util.force.ForceItem;
 import prefuse.util.force.ForceSimulator;
 import prefuse.util.force.NBodyForce;
 import prefuse.util.force.SpringForce;
@@ -111,10 +118,11 @@ public class ScanGroupView extends JPanel {
 			protected float getMassValue(VisualItem n) {
 				//System.out.println(n.getString(m_nodeGroup));
 		        float size = n.getFloat("size");
+		        float newSize = (float) Math.log(size);
 		        if (size == 0.0) {
-		        	size = 1;
+		        	newSize = 1;
 		        }
-		        return size;
+		        return newSize;
 		    }
 		};
 		
@@ -174,11 +182,17 @@ public class ScanGroupView extends JPanel {
 		 if ( m_edgeGroup != null ) {
 	           Iterator iter = vis.visibleItems(m_edgeGroup);
 	            while ( iter.hasNext() ) {
-	            	//VisualItem item = (VisualItem)iter.next();
-	                EdgeItem  e  = (EdgeItem)iter.next();
-	                NodeItem  n = e.getTargetItem();
-	                //System.out.println(n.getEndFillColor());
-	            }
+	            	
+	                EdgeItem e  = (EdgeItem)iter.next();
+	                NodeItem n = (NodeItem) e.getTargetNode();
+	                //ColorAction c = new ColorAction(n);
+	              
+	               //colObject.getRGB();
+	               // int col = c.getColor(n);
+		                
+	                //int col = c.getColor(e);
+	                //System.out.println(col);
+	              }
 	        }
 		
 		ActionList color = new ActionList();
@@ -186,6 +200,18 @@ public class ScanGroupView extends JPanel {
 		color.add(text);
 		color.add(edges);
 		return color;
+	}
+	
+	public int getColor(VisualItem item , ColorAction c){
+		NodeItem nitem = (NodeItem) item;
+		int testColor = c.getColor(nitem);
+		
+		/*
+		int testColor = nitem.getEndFillColor();
+		System.out.println(testColor);
+		*/
+		return testColor;
+		
 	}
 	
 	/*
