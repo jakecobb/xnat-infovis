@@ -45,7 +45,6 @@ import prefuse.data.io.CSVTableReader;
 import prefuse.data.query.ListQueryBinding;
 import prefuse.data.query.RangeQueryBinding;
 import prefuse.data.query.SearchQueryBinding;
-import prefuse.demos.XNATscatterviz.Counter;
 import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.AxisRenderer;
 import prefuse.render.Renderer;
