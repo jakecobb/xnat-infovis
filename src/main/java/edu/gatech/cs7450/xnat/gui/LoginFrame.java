@@ -268,7 +268,11 @@ public class LoginFrame extends JFrame {
 		if( !authSuceeded )
 			return;
 		
-		// TODO open some other window with the new connection
-		_log.info("FIXME: Open with connection: " + conn);
+		// launch the application frame
+		ApplicationFrame appFrame = new ApplicationFrame(conn);
+		appFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		appFrame.setVisible(true);
+		this.setVisible(false);
+		this.dispose();
 	}
 }

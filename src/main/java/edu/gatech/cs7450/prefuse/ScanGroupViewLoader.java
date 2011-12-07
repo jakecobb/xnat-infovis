@@ -105,6 +105,8 @@ public class ScanGroupViewLoader {
 			}
 		}
 		
+		view.pause(); // stop rendering while we update
+		
 		String nextColor = "color5"; // FIXME: next available
 
 		// add the new scan group node
@@ -129,5 +131,7 @@ public class ScanGroupViewLoader {
 			edge.setDouble("weight", scans.size() / (double)nScans); // FIXME check this formula
 			edge.setString("color", nextColor);
 		}
+		
+		view.begin(); // resume rendering
 	}
 }

@@ -9,10 +9,13 @@ public class SearchQuery implements Serializable {
 	private static final long serialVersionUID = 1L;
 	
 	// FIXME temporary
-	/** Most likely going away soon, use default root and fields. 
-	 * @deprecated */
+	/** 
+	 * Return a search query with default root element and search fields. 
+	 * @deprecated Use {@link #SearchQuery(String, SearchWhere)} instead. 
+	 */
+	@Deprecated
 	public static SearchQuery getDefault(String name, SearchWhere where) {
-		return new SearchQuery(name, XNATDefaults.DEFAULT_SEARCH_ROOT, XNATDefaults.DEFAULT_SEARCH_FIELDS, where);
+		return new SearchQuery(name, where);
 	}
 	
 	protected String name;
@@ -25,6 +28,10 @@ public class SearchQuery implements Serializable {
 		this.rootElement = rootElement;
 		this.searchFields = searchFields;
 		this.searchWhere = searchWhere;
+	}
+	
+	public SearchQuery(String name, SearchWhere searchWhere) {
+		this(name, XNATDefaults.DEFAULT_SEARCH_ROOT, XNATDefaults.DEFAULT_SEARCH_FIELDS, searchWhere);
 	}
 	
 	public SearchQuery(SearchQuery query) {

@@ -2,6 +2,8 @@ package edu.gatech.cs7450.prefuse;
 /**
  * The Size of the scan group has been fixed and the colors have been fixed
  */
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -92,19 +94,36 @@ public class ScanGroupView extends JPanel {
 	}
 	
 	protected void setupDisplay() {
+		Dimension minSize = new Dimension(720, 500);
 		display = new Display(vis);
-		display.setSize(720, 500);
+		display.setSize(minSize);
+		display.setMinimumSize(minSize);
 		display.addControlListener(new DragControl());
 		display.addControlListener(new PanControl());
 		display.addControlListener(new ZoomControl());
-		this.setSize(720, 500);
-		this.add(display);
+		
+		// make the display fill the available space
+		BorderLayout layout = new BorderLayout();
+		this.setLayout(layout);
+		this.add(display, BorderLayout.CENTER);
 	}
 	
 	public void begin() {
 		vis.run("color");
 		vis.run("layout");
-		
+	}
+	
+	public void pause() {
+		vis.cancel("color");
+		vis.cancel("layout");
+	}
+	
+	public Visualization getVisualization() {
+		return vis;
+	}
+	
+	public Display getDisplay() {
+		return display;
 	}
 	
 	private static final float 
@@ -211,7 +230,7 @@ public class ScanGroupView extends JPanel {
 		// Coloring the edges
 		m_edgeGroup = PrefuseLib.getGroupName("graph", Graph.EDGES);
 		 if ( m_edgeGroup != null ) {
-	           Iterator iter = vis.visibleItems(m_edgeGroup);
+	           Iterator<?> iter = vis.visibleItems(m_edgeGroup);
 	            while ( iter.hasNext() ) {
 	            	
 	                EdgeItem e  = (EdgeItem)iter.next();

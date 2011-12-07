@@ -67,7 +67,7 @@ public class TestSearchFrame extends JFrame {
 	
 	private JPanel contentPane;
 	private JPanel pnlSearchPanel;
-	private SearchPanel searchPanel;
+	private SearchTreePanel searchPanel;
 	private JButton btnDoSearch;
 	private JTextPane txtSearchResults;
 	private JComboBox cmbSearchName;
@@ -179,7 +179,7 @@ public class TestSearchFrame extends JFrame {
 		gbc_txtSearchResults.gridy = 2;
 		contentPane.add(txtSearchResults, gbc_txtSearchResults);
 		
-		searchPanel = new SearchPanel();
+		searchPanel = new SearchTreePanel();
 		pnlSearchPanel = searchPanel;
 		GridBagConstraints gbc_pnlSearchPanel = new GridBagConstraints();
 		gbc_pnlSearchPanel.gridwidth = 4;
