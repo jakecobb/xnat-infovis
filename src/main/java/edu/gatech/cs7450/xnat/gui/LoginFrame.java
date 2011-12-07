@@ -231,15 +231,21 @@ public class LoginFrame extends JFrame {
 		// FIXME don't block GUI thread for auth test and connection storing 
 		
 		// test authentication before trying to store
+		boolean authSuceeded = false;
 		try {
 			conn.authenticate();
+			authSuceeded = true;
 		} catch( XNATException ex ) {
 			_log.debug(user + "@" + host + " authentication failed.", ex);
-			JOptionPane.showMessageDialog(LoginFrame.this, 
+			int choice = JOptionPane.showConfirmDialog(LoginFrame.this, 
 				"Could not authenticate with the given credentials.\n" +
-					"Please check your credentials and if the network is up.", 
-				"Authentication Failed", JOptionPane.ERROR_MESSAGE);
-			return;
+					"Please check your credentials and if the network is up.\n\n" +
+					"Save connection settings anyway?",
+				"Authentication Failed", JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
+			
+			// didn't want to save
+			if( choice != JOptionPane.YES_OPTION )
+				return;
 		}
 		
 		try {
@@ -257,6 +263,10 @@ public class LoginFrame extends JFrame {
 			_log.error("Error adding host: " + host, ex);
 			JOptionPane.showMessageDialog(LoginFrame.this, "Failed to save connection settings.", "Save Failed", JOptionPane.WARNING_MESSAGE);
 		}
+		
+		// auth failed, but they opted to save above
+		if( !authSuceeded )
+			return;
 		
 		// TODO open some other window with the new connection
 		_log.info("FIXME: Open with connection: " + conn);
