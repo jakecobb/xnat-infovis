@@ -6,7 +6,10 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Stack;
 
 import javax.swing.JPanel;
 
@@ -55,6 +58,11 @@ public class ScanGroupView extends JPanel {
 	protected Display display;
 	protected String m_edgeGroup;
 	
+	/** Tracks Node objects by scan group / subject id. */
+	private NodeTracker nodeTracker;
+	
+	private Stack<String> unusedColors = new Stack<String>();
+	
 	public ScanGroupView(String xmlPath) throws DataIOException {
 		graph =  new GraphMLReader().readGraph(xmlPath);
 		createVisualization();
@@ -67,8 +75,6 @@ public class ScanGroupView extends JPanel {
 		
 		createVisualization();
 	}
-	
-	private NodeTracker nodeTracker;
 	
 	public Node getNodeForScanGroup(String id) {
 		return nodeTracker.getNodeForScanGroup(id);
@@ -210,7 +216,9 @@ public class ScanGroupView extends JPanel {
 		for( int i = 0; i < NUM_COLORS; ++i ) {
 			colorLabels.add("color" + i);
 		}
+		HashSet<String> availableColors = new LinkedHashSet<String>(colorLabels); // colors not already used by a scan group
 		colorLabels.add("subjectColor");
+		
 		DataColorAction fill = new DataColorAction("graph.nodes", "color", Constants.NOMINAL, VisualItem.FILLCOLOR, pallete);
 		fill.setOrdinalMap(colorLabels.toArray());
 		
@@ -229,34 +237,73 @@ public class ScanGroupView extends JPanel {
 		
 		// Coloring the edges
 		m_edgeGroup = PrefuseLib.getGroupName("graph", Graph.EDGES);
-		 if ( m_edgeGroup != null ) {
-	           Iterator<?> iter = vis.visibleItems(m_edgeGroup);
-	            while ( iter.hasNext() ) {
-	            	
-	                EdgeItem e  = (EdgeItem)iter.next();
-	                NodeItem srcNode = e.getSourceItem();
-	                NodeItem targetNode = e.getTargetItem();
-	                
-	                // determine which is the scan group
-	                NodeItem scanNode;
-	                if( "scan".equalsIgnoreCase(srcNode.getString("type")) ) {
-	               	 scanNode = srcNode;
-	                } else if ( "scan".equalsIgnoreCase(targetNode.getString("type")) ) {
-	               	 scanNode = targetNode;
-	                } else {
-	               	 throw new RuntimeException("FIXME: Neither is a scan node?");
-	                }
-	                
-	                // transfer scan group color to the edge
-	                e.setString("color", scanNode.getString("color"));
-	              }
-	        }
+		if( m_edgeGroup != null ) {
+			Iterator<?> iter = vis.visibleItems(m_edgeGroup);
+			while( iter.hasNext() ) {
+
+				EdgeItem e = (EdgeItem)iter.next();
+				NodeItem srcNode = e.getSourceItem();
+				NodeItem targetNode = e.getTargetItem();
+
+				// determine which is the scan group
+				NodeItem scanNode;
+				if( "scan".equalsIgnoreCase(srcNode.getString("type")) ) {
+					scanNode = srcNode;
+				} else if( "scan".equalsIgnoreCase(targetNode.getString("type")) ) {
+					scanNode = targetNode;
+				} else {
+					throw new RuntimeException("FIXME: Neither is a scan node?");
+				}
+
+				// transfer scan group color to the edge
+				String color = scanNode.getString("color");
+				availableColors.remove(color); // color is in use
+				e.setString("color", color);
+			}
+		}
+		
+		unusedColors.addAll(availableColors);
 		
 		ActionList color = new ActionList();
 		color.add(fill);
 		color.add(text);
 		color.add(edgeColors);
 		return color;
+	}
+	
+	/**
+	 * Returns whether an unused scan group color is available.
+	 * @return if a color is available
+	 */
+	public boolean isColorAvailable() {
+		return !unusedColors.isEmpty();
+	}
+	
+	/**
+	 * Returns an unused scan group color.
+	 * <p>
+	 * The color returned is not available again until returned.  Call 
+	 * <code>returnColor(String)</code> to make it available again.
+	 * </p>
+	 * 
+	 * @return the color label, or <code>null</code> if no colors are available
+	 */
+	public String reserveColor() {
+		if( !unusedColors.isEmpty() )
+			return unusedColors.pop();
+		return null;
+	}
+	
+	/**
+	 * Makes a color label available again for new scan groups.
+	 * @param color the color to return
+	 */
+	public void returnColor(String color) {
+		if( color == null ) throw new NullPointerException("color is null");
+		if( !color.matches("color[0-9]+") )
+			_log.warn("Unexpected color label: " + color);
+
+		unusedColors.push(color);
 	}
 	
 	public int getColor(VisualItem item , ColorAction c){

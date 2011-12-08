@@ -103,6 +103,9 @@ public class ScanGroupPanel extends JPanel {
 			final String MSG = "Scan group query failed.";
 			_log.error(MSG, e);
 			JOptionPane.showMessageDialog(this, MSG, "Query Failed", JOptionPane.ERROR_MESSAGE);
+		} catch( IllegalStateException e ) {
+			JOptionPane.showMessageDialog(this, "The maximum number of scan groups has already been reached.", 
+				"Add Failed", JOptionPane.ERROR_MESSAGE);
 		}
 	}
 }

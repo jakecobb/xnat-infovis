@@ -83,6 +83,10 @@ public class ScanGroupViewLoader {
 		if( view == null ) throw new NullPointerException("view is null");
 		if( groupName == null ) throw new NullPointerException("groupName is null");
 		if( result == null ) throw new NullPointerException("result is null");
+		
+		String nextColor = view.reserveColor();
+		if( nextColor == null )
+			throw new IllegalStateException("No more scan group colors available.");
 
 		Graph graph = view.getGraph();
 		
@@ -106,8 +110,6 @@ public class ScanGroupViewLoader {
 		}
 		
 		view.pause(); // stop rendering while we update
-		
-		String nextColor = "color5"; // FIXME: next available
 
 		// add the new scan group node
 		Node sgNode = graph.addNode();
