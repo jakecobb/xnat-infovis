@@ -90,6 +90,22 @@ public class ScanGroupViewLoader {
 
 		Graph graph = view.getGraph();
 		
+		// see if the name is already in use
+		if( view.getNodeForScanGroup(groupName) != null ) {
+
+			// search for an unused suffix
+			StringBuilder nameBuilder = new StringBuilder(groupName).append(" [");
+			int preLen = nameBuilder.length();
+			int i = 2;
+			do {
+				nameBuilder.setLength(preLen);
+				nameBuilder.append(i++).append(']');
+			} while( null != view.getNodeForScanGroup(nameBuilder.toString()) );
+			
+			// use the available suffix name
+			groupName = nameBuilder.toString();
+		}
+		
 		LinkedHashMap<String, List<XNATResultSetRow>> subjToScans = 
 			new LinkedHashMap<String, List<XNATResultSetRow>>();
 		
