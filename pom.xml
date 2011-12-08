@@ -64,6 +64,13 @@
       <version>1.2.16</version>
       <scope>compile</scope>
     </dependency>
+    <!-- utility methods -->
+    <dependency>
+      <groupId>commons-lang</groupId>
+      <artifactId>commons-lang</artifactId>
+      <version>2.4</version>
+      <scope>compile</scope>
+    </dependency>
     
     <!-- experimental: SwingX for autocomplete and such -->
     <dependency>

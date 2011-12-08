@@ -4,6 +4,7 @@ package edu.gatech.cs7450.prefuse;
  */
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.DataColorAction;
 import prefuse.action.layout.graph.ForceDirectedLayout;
 import prefuse.activity.Activity;
+import prefuse.controls.ControlAdapter;
 import prefuse.controls.DragControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.ZoomControl;
@@ -48,6 +50,7 @@ import prefuse.util.force.SpringForce;
 import prefuse.visual.EdgeItem;
 import prefuse.visual.NodeItem;
 import prefuse.visual.VisualItem;
+import edu.gatech.cs7450.prefuse.controls.HTMLToolTipControl;
 
 public class ScanGroupView extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -107,6 +110,11 @@ public class ScanGroupView extends JPanel {
 		display.addControlListener(new DragControl());
 		display.addControlListener(new PanControl());
 		display.addControlListener(new ZoomControl());
+		
+		HTMLToolTipControl toolTipControl = new HTMLToolTipControl("scanGroup", "type");
+		toolTipControl.setShowLabel(true);
+		toolTipControl.setLabelOverrides("<b>ID:</b> ", "<b>Type:</b> ");
+		display.addControlListener(toolTipControl);
 		
 		// make the display fill the available space
 		BorderLayout layout = new BorderLayout();
