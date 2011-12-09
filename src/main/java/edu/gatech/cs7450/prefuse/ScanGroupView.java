@@ -2,8 +2,13 @@ package edu.gatech.cs7450.prefuse;
 /**
  * The Size of the scan group has been fixed and the colors have been fixed
  */
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +17,10 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.Stack;
 
+import javax.swing.AbstractAction;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 
 import org.apache.log4j.Logger;
 
@@ -24,10 +32,12 @@ import prefuse.action.ActionList;
 import prefuse.action.RepaintAction;
 import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.DataColorAction;
+import prefuse.action.assignment.StrokeAction;
 import prefuse.action.layout.graph.ForceDirectedLayout;
 import prefuse.activity.Activity;
 import prefuse.controls.ControlAdapter;
 import prefuse.controls.DragControl;
+import prefuse.controls.FocusControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.ZoomControl;
 import prefuse.data.Graph;
@@ -38,6 +48,7 @@ import prefuse.data.event.ColumnListener;
 import prefuse.data.io.DataIOException;
 import prefuse.data.io.GraphMLReader;
 import prefuse.data.tuple.TableTuple;
+import prefuse.data.tuple.TupleSet;
 import prefuse.render.DefaultRendererFactory;
 import prefuse.render.LabelRenderer;
 import prefuse.render.RendererFactory;
@@ -50,6 +61,7 @@ import prefuse.util.force.SpringForce;
 import prefuse.visual.EdgeItem;
 import prefuse.visual.NodeItem;
 import prefuse.visual.VisualItem;
+import edu.gatech.cs7450.Pair;
 import edu.gatech.cs7450.prefuse.controls.HTMLToolTipControl;
 
 public class ScanGroupView extends JPanel {
@@ -102,19 +114,134 @@ public class ScanGroupView extends JPanel {
 		setupDisplay();
 	}
 	
+	@SuppressWarnings("serial")
 	protected void setupDisplay() {
 		Dimension minSize = new Dimension(720, 500);
 		display = new Display(vis);
 		display.setSize(minSize);
 		display.setMinimumSize(minSize);
-		display.addControlListener(new DragControl());
-		display.addControlListener(new PanControl());
-		display.addControlListener(new ZoomControl());
 		
+		this.setFocusable(false);
+		if( _log.isTraceEnabled() ) {
+			display.addFocusListener(new FocusListener() {
+				public void focusLost(FocusEvent e) {
+					_log.trace("display.focusLost: " + e);
+				}
+				public void focusGained(FocusEvent e) {
+					_log.trace("display.focusGained: " + e);
+				}
+			});
+		}
+		
+		// tooltips
 		HTMLToolTipControl toolTipControl = new HTMLToolTipControl("scanGroup", "type");
 		toolTipControl.setShowLabel(true);
 		toolTipControl.setLabelOverrides("<b>ID:</b> ", "<b>Type:</b> ");
 		display.addControlListener(toolTipControl);
+		
+//		// toggle fixed positions for a node
+//		display.addControlListener(new ControlAdapter() {
+//			@Override
+//			public void itemClicked(VisualItem item, MouseEvent e) {
+//				_log.info("item.class=" + item.getClass().getName());
+//				if( _log.isTraceEnabled() ) {
+//					_log.trace("left.mouse? " + SwingUtilities.isLeftMouseButton(e));
+//					_log.trace("mods: " + MouseEvent.getMouseModifiersText(e.getModifiers()));
+//					_log.trace("modsex: " + MouseEvent.getModifiersExText(e.getModifiersEx()));
+//					_log.trace("mods & CTRL_DOWN_MASK: " + (e.getModifiers() & MouseEvent.CTRL_DOWN_MASK));
+//					_log.trace("modsex & CTRL_DOWN_MASK: " + (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK));
+//					_log.trace("NodeItem? " + (item instanceof NodeItem));
+//					_log.trace("TableNodeItem? " + (item instanceof TableNodeItem));
+//				}
+//				
+//				// handle Ctrl + left click on nodes only
+//				if( SwingUtilities.isLeftMouseButton(e) && 
+//						0 != (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK) && 
+//						item instanceof NodeItem ) {
+//					
+//					boolean wasFixed = item.isFixed();
+//					item.setFixed(!wasFixed);
+//					_log.info("wasFixed=" + wasFixed + ", isFixed=" + item.isFixed());
+////					e.consume();
+//				}
+//				
+//				_log.info("FOCUS_ITEMS:\n");
+//				for( Iterator<?> iter = vis.items(Visualization.FOCUS_ITEMS); iter.hasNext(); ) {
+//					VisualItem vItem = (VisualItem)iter.next();
+//					_log.info(vItem);
+//				}
+//			}
+//		});
+
+		display.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0,true), "DEL released");
+		display.getActionMap().put("DEL released", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if( _log.isDebugEnabled() ) _log.debug("delete.actionPerformed: " + e);
+				
+				// stop rendering while we process
+				pause();
+				
+				try {
+					// gather nodes to delete
+					ArrayList<Pair<VisualItem, Node>> toRemove = new ArrayList<Pair<VisualItem, Node>>();
+					for( @SuppressWarnings("unchecked") Iterator<VisualItem> iter = vis.items(Visualization.FOCUS_ITEMS); iter.hasNext(); ) {
+						VisualItem item = iter.next();
+						if( item instanceof NodeItem )
+							toRemove.add(Pair.make(item, (Node)item.getSourceTuple()));
+					}
+					
+					if( toRemove.size() == 0 )
+						return;
+					
+					// make sure
+					int choice = JOptionPane.showConfirmDialog(display, "Really delete " + toRemove.size() + " nodes?", 
+						"Confirm Delete", JOptionPane.YES_NO_OPTION);
+					if( choice != JOptionPane.YES_OPTION )
+						return;
+					
+					// delete the nodes, tracking freed scan group colors
+					LinkedHashSet<String> returnColors = new LinkedHashSet<String>();
+					TupleSet focusGroup = vis.getGroup(Visualization.FOCUS_ITEMS);
+					for( Pair<VisualItem, Node> pair : toRemove ) {
+						VisualItem focusItem = pair.getFirst();
+						Node node = pair.getSecond();
+						
+						// remove the node
+						if( "scan".equals(node.getString("type")) )
+							returnColors.add(node.getString("color"));
+						graph.removeTuple(node);
+						
+						// and the visual item from the focus group
+						focusGroup.removeTuple(focusItem);
+					}
+					
+					// return the colors to the available pool
+					for( String color : returnColors )
+						returnColor(color);
+					
+				} finally {
+					begin(); // resume rendering
+				}
+			}
+		});
+		
+		display.addControlListener(new DragControl(false, false));
+		display.addControlListener(new PanControl());
+		display.addControlListener(new ZoomControl());
+		display.addControlListener(new FocusControl(1, "color"));
+		display.addControlListener(new ControlAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if( _log.isDebugEnabled() ) _log.debug("focusControl.mouseClicked: " + e);
+				display.requestFocusInWindow();
+			}
+			@Override
+			public void itemClicked(VisualItem item, MouseEvent e) {
+				if( _log.isDebugEnabled() ) _log.debug("focusControl.itemClicked: " + e);
+				display.requestFocusInWindow();
+			}
+		});
 		
 		// make the display fill the available space
 		BorderLayout layout = new BorderLayout();
@@ -236,6 +363,7 @@ public class ScanGroupView extends JPanel {
 		DataColorAction edgeColors = new DataColorAction("graph.edges", "color", Constants.NOMINAL, VisualItem.STROKECOLOR, pallete);
 		edgeColors.setOrdinalMap(colorLabels.toArray());
 		
+		
 		// set subject nodes to the single subject color
 		for( Iterator<?> nodeIter = vis.visibleItems("graph.nodes"); nodeIter.hasNext(); ) {
 			NodeItem node = (NodeItem)nodeIter.next();
@@ -272,7 +400,28 @@ public class ScanGroupView extends JPanel {
 		
 		unusedColors.addAll(availableColors);
 		
+		ColorAction focusBorder = new ColorAction("graph.nodes", VisualItem.STROKECOLOR) {
+			@Override
+			public int getColor(VisualItem item) {
+				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
+					return ColorLib.gray(0);
+				return item.getFillColor();
+			}
+		};
+		StrokeAction focusStroke = new StrokeAction("graph.nodes") {
+			private BasicStroke focusStroke = new BasicStroke(3.0f);
+			@Override
+			public BasicStroke getStroke(VisualItem item) {
+				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
+					return focusStroke;
+				return defaultStroke;
+					
+			}
+		};
+		
 		ActionList color = new ActionList();
+		color.add(focusBorder);
+		color.add(focusStroke);
 		color.add(fill);
 		color.add(text);
 		color.add(edgeColors);
@@ -358,10 +507,15 @@ public class ScanGroupView extends JPanel {
 			if( _log.isDebugEnabled() )
 				_log.debug("src=" + src + ", idx=" + idx + ", prev=" + prev);
 			
+			// prev == null -> newly added row
 			if( prev != null )
 				scanGroupToNode.remove(prev);
+			
 			String newId = src.getString(idx);
-			scanGroupToNode.put(newId, graph.getNode(idx));
+			
+			// newId == null -> removed row
+			if( newId != null )
+				scanGroupToNode.put(newId, graph.getNode(idx));
 		}
 
 		@Override

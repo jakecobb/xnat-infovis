@@ -1,5 +1,8 @@
 package edu.gatech.cs7450.xnat.gui;
 
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.FocusTraversalPolicy;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -49,11 +52,11 @@ public class ScanGroupPanel extends JPanel {
 		setLayout(new GridLayout(0, 1, 0, 0));
 		
 		splitPane = new JSplitPane();
-		splitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
+		splitPane.setOrientation(JSplitPane.HORIZONTAL_SPLIT);
 		add(splitPane);
 		
 		JPanel panel = new JPanel();
-		splitPane.setRightComponent(panel);
+		splitPane.setLeftComponent(panel);
 		GridBagLayout gbl_panel = new GridBagLayout();
 		gbl_panel.columnWidths = new int[]{448, 0};
 		gbl_panel.rowHeights = new int[]{35, 131, 0};
@@ -84,12 +87,48 @@ public class ScanGroupPanel extends JPanel {
 		panel.add(panel_1, gbc_panel_1);
 	}
 	
+	public ScanGroupView getScanGroupView() {
+		return scanGroupView;
+	}
+	
 	private void _initScanGroupView() {
+		
 		Graph sgGraph = ScanGroupViewLoader.loadSubjects(connection);
 		
 		scanGroupView = new ScanGroupView(sgGraph);
-		splitPane.setLeftComponent(scanGroupView);
+		splitPane.setRightComponent(scanGroupView);
 		scanGroupView.begin();
+		
+		this.setFocusTraversalPolicy(new FocusTraversalPolicy() {
+			@Override
+			public Component getLastComponent(Container aContainer) {
+				return splitPane.getLeftComponent();
+			}
+			
+			@Override
+			public Component getFirstComponent(Container aContainer) {
+				return splitPane.getRightComponent();
+			}
+			
+			@Override
+			public Component getDefaultComponent(Container aContainer) {
+				return splitPane.getRightComponent();
+			}
+			
+			@Override
+			public Component getComponentBefore(Container aContainer, Component aComponent) {
+				if( aComponent == splitPane.getLeftComponent() )
+					return splitPane.getRightComponent();
+				return splitPane.getLeftComponent();
+			}
+			
+			@Override
+			public Component getComponentAfter(Container aContainer, Component aComponent) {
+				if( aComponent == splitPane.getLeftComponent() )
+					return splitPane.getRightComponent();
+				return splitPane.getLeftComponent();
+			}
+		});
 	}
 	
 	private void _addScanGroup() {

@@ -127,29 +127,32 @@ public class ScanGroupViewLoader {
 		
 		view.pause(); // stop rendering while we update
 
-		// add the new scan group node
-		Node sgNode = graph.addNode();
-		sgNode.set("scanGroup", groupName);
-		sgNode.set("type", "scan");
-		sgNode.set("size", (double)nScans);
-		sgNode.set("color", nextColor);
-		
-		// connect edges for each subject
-		for( Map.Entry<String, List<XNATResultSetRow>> entry : subjToScans.entrySet() ) {
-			String subjectId = entry.getKey();
-			List<XNATResultSetRow> scans = entry.getValue();
+		try {
+			// add the new scan group node
+			Node sgNode = graph.addNode();
+			sgNode.set("scanGroup", groupName);
+			sgNode.set("type", "scan");
+			sgNode.set("size", (double)nScans);
+			sgNode.set("color", nextColor);
 			
-			Node subjNode = view.getNodeForScanGroup(subjectId);
-			if( subjNode == null ) {
-				_log.error("No node found for subject: " + subjectId);
-				continue;
+			// connect edges for each subject
+			for( Map.Entry<String, List<XNATResultSetRow>> entry : subjToScans.entrySet() ) {
+				String subjectId = entry.getKey();
+				List<XNATResultSetRow> scans = entry.getValue();
+				
+				Node subjNode = view.getNodeForScanGroup(subjectId);
+				if( subjNode == null ) {
+					// may have been deleted by the user
+					_log.debug("No node found for subject: " + subjectId);
+					continue;
+				}
+				
+				Edge edge = graph.addEdge(subjNode, sgNode);
+				edge.setDouble("weight", scans.size() / (double)nScans); // FIXME check this formula
+				edge.setString("color", nextColor);
 			}
-			
-			Edge edge = graph.addEdge(subjNode, sgNode);
-			edge.setDouble("weight", scans.size() / (double)nScans); // FIXME check this formula
-			edge.setString("color", nextColor);
+		} finally {
+			view.begin(); // resume rendering
 		}
-		
-		view.begin(); // resume rendering
 	}
 }
