@@ -21,6 +21,7 @@ import javax.swing.AbstractAction;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 
 import org.apache.log4j.Logger;
 
@@ -139,39 +140,19 @@ public class ScanGroupView extends JPanel {
 		toolTipControl.setLabelOverrides("<b>ID:</b> ", "<b>Type:</b> ");
 		display.addControlListener(toolTipControl);
 		
-//		// toggle fixed positions for a node
-//		display.addControlListener(new ControlAdapter() {
-//			@Override
-//			public void itemClicked(VisualItem item, MouseEvent e) {
-//				_log.info("item.class=" + item.getClass().getName());
-//				if( _log.isTraceEnabled() ) {
-//					_log.trace("left.mouse? " + SwingUtilities.isLeftMouseButton(e));
-//					_log.trace("mods: " + MouseEvent.getMouseModifiersText(e.getModifiers()));
-//					_log.trace("modsex: " + MouseEvent.getModifiersExText(e.getModifiersEx()));
-//					_log.trace("mods & CTRL_DOWN_MASK: " + (e.getModifiers() & MouseEvent.CTRL_DOWN_MASK));
-//					_log.trace("modsex & CTRL_DOWN_MASK: " + (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK));
-//					_log.trace("NodeItem? " + (item instanceof NodeItem));
-//					_log.trace("TableNodeItem? " + (item instanceof TableNodeItem));
-//				}
-//				
-//				// handle Ctrl + left click on nodes only
-//				if( SwingUtilities.isLeftMouseButton(e) && 
-//						0 != (e.getModifiersEx() & MouseEvent.CTRL_DOWN_MASK) && 
-//						item instanceof NodeItem ) {
-//					
-//					boolean wasFixed = item.isFixed();
-//					item.setFixed(!wasFixed);
-//					_log.info("wasFixed=" + wasFixed + ", isFixed=" + item.isFixed());
-////					e.consume();
-//				}
-//				
-//				_log.info("FOCUS_ITEMS:\n");
-//				for( Iterator<?> iter = vis.items(Visualization.FOCUS_ITEMS); iter.hasNext(); ) {
-//					VisualItem vItem = (VisualItem)iter.next();
-//					_log.info(vItem);
-//				}
-//			}
-//		});
+		// double-click to toggle fixed position
+		display.addControlListener(new ControlAdapter() {
+			@Override
+			public void itemClicked(VisualItem item, MouseEvent e) {
+				if( SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2 ) {
+					if( _log.isDebugEnabled() ) {
+						_log.debug("toggle.itemClicked: " + e);
+						_log.debug("item.isFixed: " + item.isFixed());
+					}
+					item.setFixed(!item.isFixed());
+				}
+			}
+		});
 
 		display.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0,true), "DEL released");
 		display.getActionMap().put("DEL released", new AbstractAction() {
@@ -226,7 +207,19 @@ public class ScanGroupView extends JPanel {
 			}
 		});
 		
-		display.addControlListener(new DragControl(false, false));
+		display.addControlListener(new DragControl(false, false) {
+			@Override
+			public void itemReleased(VisualItem item, MouseEvent e) {
+				if( !SwingUtilities.isLeftMouseButton(e) ) return;
+				
+				// super doesn't remove the fixed setting unless it was dragged, causing it to become stuck
+				// FIXME: reflection to nullify activeItem if needed
+//            activeItem = null;
+            item.getTable().removeTableListener(this);
+            if ( resetItem ) item.setFixed(wasFixed);
+            dragged = false;
+			}
+		});
 		display.addControlListener(new PanControl());
 		display.addControlListener(new ZoomControl());
 		display.addControlListener(new FocusControl(1, "color"));
