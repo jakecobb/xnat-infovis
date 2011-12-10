@@ -1,8 +1,8 @@
 package edu.gatech.cs7450.prefuse.controls;
 
-import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
-
 import java.awt.event.MouseEvent;
+
+import org.apache.commons.lang.StringEscapeUtils;
 
 import prefuse.Display;
 import prefuse.controls.ControlAdapter;
@@ -95,6 +95,18 @@ public class HTMLToolTipControl extends ControlAdapter {
 	public void itemExited(VisualItem item, MouseEvent e) {
 		Display disp = (Display)e.getSource();
 		disp.setToolTipText(null);
+	}
+	
+	/** 
+	 * Escapes HTML in a label or field value.
+	 * 
+	 * @param value the value to escape
+	 * @return the escaped value, or <code>""</code> if <code>value</code> is <code>null</code>
+	 */
+	protected String escapeHtml(String value) {
+		if( value == null )
+			return "";
+		return StringEscapeUtils.escapeHtml(value);
 	}
 
 // accessors
