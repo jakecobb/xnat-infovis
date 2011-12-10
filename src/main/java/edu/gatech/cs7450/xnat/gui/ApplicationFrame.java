@@ -103,15 +103,23 @@ public class ApplicationFrame extends JFrame {
 				_showScanGroupView();
 			}
 		});
+		
+		JMenuItem mntmProjectOverview = new JMenuItem("Project Overview");
+		mntmProjectOverview.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				_showProjectOverview();
+			}
+		});
+		mnViews.add(mntmProjectOverview);
 		mnViews.add(mntmScanGroups);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		GridBagLayout gbl_contentPane = new GridBagLayout();
 		gbl_contentPane.columnWidths = new int[]{274, 0, 0};
-		gbl_contentPane.rowHeights = new int[]{0, 0, 0, 242, 0};
+		gbl_contentPane.rowHeights = new int[]{45, 0, 242, 0};
 		gbl_contentPane.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
-		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+		gbl_contentPane.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
 		contentPane.setLayout(gbl_contentPane);
 		
 		JButton btnScatterplot = new JButton("Search to Scatterplot");
@@ -121,25 +129,27 @@ public class ApplicationFrame extends JFrame {
 			}
 		});
 		GridBagConstraints gbc_btnScatterplot = new GridBagConstraints();
+		gbc_btnScatterplot.fill = GridBagConstraints.VERTICAL;
 		gbc_btnScatterplot.insets = new Insets(0, 0, 5, 5);
 		gbc_btnScatterplot.gridx = 0;
-		gbc_btnScatterplot.gridy = 1;
+		gbc_btnScatterplot.gridy = 0;
 		contentPane.add(btnScatterplot, gbc_btnScatterplot);
 		
 		JButton btnScanGroups = new JButton("Search to Scan Groups");
 		GridBagConstraints gbc_btnScanGroups = new GridBagConstraints();
+		gbc_btnScanGroups.fill = GridBagConstraints.VERTICAL;
 		gbc_btnScanGroups.insets = new Insets(0, 0, 5, 0);
 		gbc_btnScanGroups.gridx = 1;
-		gbc_btnScanGroups.gridy = 1;
+		gbc_btnScanGroups.gridy = 0;
 		contentPane.add(btnScanGroups, gbc_btnScanGroups);
 		
 		JSeparator separator = new JSeparator();
 		GridBagConstraints gbc_separator = new GridBagConstraints();
 		gbc_separator.gridwidth = 2;
 		gbc_separator.fill = GridBagConstraints.HORIZONTAL;
-		gbc_separator.insets = new Insets(0, 0, 5, 5);
+		gbc_separator.insets = new Insets(0, 0, 5, 0);
 		gbc_separator.gridx = 0;
-		gbc_separator.gridy = 2;
+		gbc_separator.gridy = 1;
 		contentPane.add(separator, gbc_separator);
 		
 		searchFrame = new SearchFrame();
@@ -152,8 +162,14 @@ public class ApplicationFrame extends JFrame {
 		gbc_searchFrame.gridwidth = 2;
 		gbc_searchFrame.fill = GridBagConstraints.BOTH;
 		gbc_searchFrame.gridx = 0;
-		gbc_searchFrame.gridy = 3;
+		gbc_searchFrame.gridy = 2;
 		contentPane.add(searchFrame, gbc_searchFrame);
+	}
+
+	private void _showProjectOverview() {
+		SelectProjectDialog dialog = new SelectProjectDialog(connection);
+		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+		dialog.setVisible(true);
 	}
 
 	public ApplicationFrame(XNATConnection conn) {
