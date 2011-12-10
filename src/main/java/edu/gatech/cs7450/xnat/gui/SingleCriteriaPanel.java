@@ -111,7 +111,7 @@ public class SingleCriteriaPanel extends JPanel {
 	 */
 	public SingleCriteria toSingleCriteria(SingleCriteria criteria) {
 		SingleCriteria c = criteria != null ? criteria : new SingleCriteria();
-		c.setSchemeField(txtSchemeField.getText());
+		c.setSchemeField(txtSchemeField.getText().trim()); // trim because spaces will fail the search
 		c.setValue(txtFieldValue.getText());
 		c.setOperator((CompareOperator)cmbOperator.getSelectedItem());
 		return c;
