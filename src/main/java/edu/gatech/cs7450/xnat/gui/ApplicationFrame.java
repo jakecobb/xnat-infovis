@@ -17,15 +17,22 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
+import javax.swing.WindowConstants;
 import javax.swing.border.EmptyBorder;
 
 import org.apache.log4j.Logger;
 
 import edu.gatech.cs7450.xnat.SearchQuery;
+import edu.gatech.cs7450.xnat.SearchWhere;
+import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
+import edu.gatech.cs7450.xnat.SingleCriteria;
+import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 import edu.gatech.cs7450.xnat.XNATConnection;
+import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
 import edu.gatech.cs7450.xnat.XNATException;
 import edu.gatech.cs7450.xnat.XNATResultSet;
 import edu.gatech.cs7450.xnat.XNATSearch;
+import edu.gatech.cs7450.xnat.gui.SelectProjectDialog.ProjectSelectedListener;
 
 /**
  * The main application frame.
@@ -97,13 +104,6 @@ public class ApplicationFrame extends JFrame {
 		mnViews.setMnemonic(KeyEvent.VK_V);
 		menuBar.add(mnViews);
 		
-		JMenuItem mntmScanGroups = new JMenuItem("Scan Groups");
-		mntmScanGroups.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				_showScanGroupView();
-			}
-		});
-		
 		JMenuItem mntmProjectOverview = new JMenuItem("Project Overview");
 		mntmProjectOverview.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -111,7 +111,25 @@ public class ApplicationFrame extends JFrame {
 			}
 		});
 		mnViews.add(mntmProjectOverview);
-		mnViews.add(mntmScanGroups);
+		
+		JMenu mnScanGroups = new JMenu("Scan Groups");
+		mnViews.add(mnScanGroups);
+		
+		JMenuItem mntmAllSubjects = new JMenuItem("All Subjects");
+		mntmAllSubjects.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				_showScanGroupView(false);
+			}
+		});
+		mnScanGroups.add(mntmAllSubjects);
+		
+		JMenuItem mntmForProject = new JMenuItem("For Project");
+		mntmForProject.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				_showScanGroupView(true);
+			}
+		});
+		mnScanGroups.add(mntmForProject);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -167,7 +185,27 @@ public class ApplicationFrame extends JFrame {
 	}
 
 	private void _showProjectOverview() {
-		SelectProjectDialog dialog = new SelectProjectDialog(connection);
+		ProjectSelectedListener projectSelected = new ProjectSelectedListener() {
+			public void projectSelected(String project) {
+				try {
+					// query for the data for this project
+					SearchWhere where = new SearchWhere(SearchMethod.AND, 
+						new SingleCriteria(Sessions.PROJECT.getSummary(), CompareOperator.EQUAL, project));		
+					XNATSearch search = new XNATSearch(connection);
+					XNATResultSet result = search.runSearch(where);
+					
+					String message = "Got result with: " + result.getNumRecords() + " reported records and " + result.getRows().size() + " actual rows."; 
+					_log.info(message);
+					JOptionPane.showMessageDialog(ApplicationFrame.this, message, "FIXME: TO THE OVERVIEW VIZ", JOptionPane.INFORMATION_MESSAGE);
+				} catch( XNATException e ) {
+					final String MSG = "Project data query failed for: " + project;
+					_log.error(MSG, e);
+					JOptionPane.showMessageDialog(ApplicationFrame.this, MSG, "Load Failed", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		};
+		
+		SelectProjectDialog dialog = new SelectProjectDialog(connection, projectSelected);
 		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		dialog.setVisible(true);
 	}
@@ -176,15 +214,28 @@ public class ApplicationFrame extends JFrame {
 		this();
 		this.connection = conn;
 	}
-	
-	private void _showScanGroupView() {
-		ScanGroupPanel sgPanel = new ScanGroupPanel(connection);
+
+	private void _showScanGroupView(boolean forProject) {
 		
-		JFrame frame = new JFrame("Scan Groups View");
-		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-		frame.getContentPane().add(sgPanel);
-		frame.pack();
-		frame.setVisible(true);
+		ProjectSelectedListener projectSelected = new ProjectSelectedListener() {
+			public void projectSelected(String project) {
+				ScanGroupPanel sgPanel = new ScanGroupPanel(connection, project);
+				
+				JFrame frame = new JFrame("Scan Groups View");
+				frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+				frame.getContentPane().add(sgPanel);
+				frame.pack();
+				frame.setVisible(true);
+			}
+		};
+		
+		if( !forProject ) {
+			projectSelected.projectSelected(null);
+		} else {
+			SelectProjectDialog dialog = new SelectProjectDialog(connection, projectSelected);
+			dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+			dialog.setVisible(true);
+		}
 	}
 	
 	private void _searchToScatterplot() {

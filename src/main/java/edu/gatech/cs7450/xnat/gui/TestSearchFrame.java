@@ -303,7 +303,7 @@ public class TestSearchFrame extends JFrame {
 	}
 	
 	private void _openScanGroupsClicked(ActionEvent e) {
-		Graph sgGraph = ScanGroupViewLoader.loadSubjects(conn);
+		Graph sgGraph = ScanGroupViewLoader.loadSubjects(conn, null);
 		ScanGroupView view = new ScanGroupView(sgGraph);
 
 		SearchWhere where = searchPanel.toSearchWhere();

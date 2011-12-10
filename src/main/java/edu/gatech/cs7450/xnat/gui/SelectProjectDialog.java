@@ -18,24 +18,28 @@ import javax.swing.border.EmptyBorder;
 
 import org.apache.log4j.Logger;
 
-import edu.gatech.cs7450.xnat.SearchWhere;
-import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
-import edu.gatech.cs7450.xnat.SingleCriteria;
-import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 import edu.gatech.cs7450.xnat.XNATConnection;
 import edu.gatech.cs7450.xnat.XNATConstants.Projects;
-import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
 import edu.gatech.cs7450.xnat.XNATException;
-import edu.gatech.cs7450.xnat.XNATResultSet;
 import edu.gatech.cs7450.xnat.XNATSearch;
 import edu.gatech.cs7450.xnat.XNATTableResult;
 import edu.gatech.cs7450.xnat.XNATTableResult.XNATTableRow;
 
+/**
+ * Dialog for selecting a project.
+ */
 public class SelectProjectDialog extends JDialog {
 	private static final long serialVersionUID = 1L;
 	private static final Logger _log = Logger.getLogger(SelectProjectDialog.class);
+	
+	/** Handler when a project is selected. */
+	public static interface ProjectSelectedListener {
+		/** Called when a project is selected. */
+		public void projectSelected(String project);
+	}
 
 	private transient XNATConnection conn;
+	private transient ProjectSelectedListener projectSelected;
 
 	private final JPanel contentPanel = new JPanel();
 	private JComboBox cmbProject;
@@ -54,9 +58,14 @@ public class SelectProjectDialog extends JDialog {
 	}
 	
 	public SelectProjectDialog(XNATConnection conn) {
+		this(conn, null);
+	}
+	
+	public SelectProjectDialog(XNATConnection conn, ProjectSelectedListener projectSelected) {
 		this();
 		if( conn == null ) throw new NullPointerException("conn is null");
 		this.conn = conn;
+		this.projectSelected = projectSelected;
 		
 		_init();
 	}
@@ -144,13 +153,17 @@ public class SelectProjectDialog extends JDialog {
 			return;
 		}
 		
-		// query for the data for this project
-		SearchWhere where = new SearchWhere(SearchMethod.AND, 
-			new SingleCriteria(Sessions.PROJECT.getSummary(), CompareOperator.EQUAL, project));		
-		XNATSearch search = new XNATSearch(conn);
-		XNATResultSet result = search.runSearch(where);
+		if( projectSelected != null )
+			projectSelected.projectSelected(project);
+		else
+			_log.warn("No handler for selected project: " + project);
 		
-		_log.info("Got result with: " + result.getNumRecords() + " reported records and " + result.getRows().size() + " actual rows.");
-		throw new RuntimeException("FIXME: Open for project: " + project);
+		projectSelected = null;
+		this.setVisible(false);
+		this.dispose();
+	}
+	
+	public void setProjectSelectedListener(ProjectSelectedListener projectSelected) {
+		this.projectSelected = projectSelected;
 	}
 }

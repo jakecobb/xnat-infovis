@@ -45,16 +45,17 @@ public class ScanGroupViewLoader {
 	 * Loads an initial graph for {@link ScanGroupView} with all the subject nodes.
 	 * 
 	 * @param conn the connection to fetch subjects from
+	 * @param project  only subjects from this project if not <code>null</code>
 	 * @return the graph
 	 * @throws NullPointerException if <code>conn</code> is <code>null</code>
 	 * @throws XNATException        if the subject fetch fails
 	 */
-	public static Graph loadSubjects(XNATConnection conn) throws XNATException {
+	public static Graph loadSubjects(XNATConnection conn, String project) throws XNATException {
 		if( conn == null ) throw new NullPointerException("conn is null");
 		
 		XNATSearch search = new XNATSearch(conn);
 		
-		XNATTableResult subjects = search.fetchSubjects();
+		XNATTableResult subjects = search.fetchSubjects(project);
 		
 		Table nodeTable = nodeSchema.instantiate(),
 		      edgeTable = edgeSchema.instantiate();

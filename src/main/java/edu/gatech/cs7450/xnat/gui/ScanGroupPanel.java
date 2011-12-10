@@ -35,13 +35,15 @@ public class ScanGroupPanel extends JPanel {
 	private static final Logger _log = Logger.getLogger(ScanGroupPanel.class);
 	
 	private XNATConnection connection;
+	private String project;
 	private SearchFrame searchPanel;
 	private ScanGroupView scanGroupView;
 	private JSplitPane splitPane;
 	
-	public ScanGroupPanel(XNATConnection conn) {
+	public ScanGroupPanel(XNATConnection conn, String project) {
 		this();
 		connection = conn;
+		this.project = project;
 		_initScanGroupView();
 	}
 
@@ -93,7 +95,7 @@ public class ScanGroupPanel extends JPanel {
 	
 	private void _initScanGroupView() {
 		
-		Graph sgGraph = ScanGroupViewLoader.loadSubjects(connection);
+		Graph sgGraph = ScanGroupViewLoader.loadSubjects(connection, project);
 		
 		scanGroupView = new ScanGroupView(sgGraph);
 		splitPane.setRightComponent(scanGroupView);
