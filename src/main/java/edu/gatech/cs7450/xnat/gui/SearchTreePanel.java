@@ -371,6 +371,9 @@ public class SearchTreePanel extends JPanel {
 		treeCriteria.setCellEditor(new DefaultTreeCellEditor(treeCriteria, 
 			(DefaultTreeCellRenderer)treeCriteria.getCellRenderer(), 
 			new SearchTreeCellEditor()));
+		
+		// make sure focus loss causes a save
+		treeCriteria.setInvokesStopCellEditing(true);
 	}
 
 	private static class SearchTreeNode extends DefaultMutableTreeNode {
