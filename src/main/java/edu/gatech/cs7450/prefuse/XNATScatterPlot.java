@@ -42,7 +42,6 @@ import prefuse.controls.ToolTipControl;
 import prefuse.data.Table;
 import prefuse.data.expression.AndPredicate;
 import prefuse.data.io.CSVTableReader;
-import prefuse.data.query.ListQueryBinding;
 import prefuse.data.query.RangeQueryBinding;
 import prefuse.data.query.SearchQueryBinding;
 import prefuse.render.AbstractShapeRenderer;
@@ -132,15 +131,21 @@ public class XNATScatterPlot extends JPanel {
     private String shape_data;
     private String color_data;
     private String my_group ;
+
     
     /*
      * Constructor for the class 
      * This is where all the important stuff happens
      */
     public XNATScatterPlot(Table t) {
+   	 this(t, "TE", "TR", "FOVx", "Subject", "Experiments");
+    }
+    
+    public XNATScatterPlot(Table t, String xField, String yField, String sizeField, String shapeField, String colorField) {
         super(new BorderLayout());
         //Setting the various filter fields 
-        scatter_set("TE" , "TR" , "FOVx" , "Subject" , "Experiments" , "xnatdata");
+        scatter_set(xField , yField , sizeField , shapeField , colorField, "xnatdata");
+        
         /*
          * Step 1: Setup the Visualization
          */

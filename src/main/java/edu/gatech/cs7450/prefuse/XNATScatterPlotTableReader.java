@@ -1,8 +1,7 @@
 package edu.gatech.cs7450.prefuse;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -12,8 +11,6 @@ import org.apache.log4j.Logger;
 
 import prefuse.data.DataTypeException;
 import prefuse.data.Table;
-import prefuse.data.column.ObjectColumn;
-import prefuse.data.parser.DataParseException;
 import edu.gatech.cs7450.xnat.SearchField;
 import edu.gatech.cs7450.xnat.XNATConstants.Scans;
 import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
@@ -23,70 +20,29 @@ import edu.gatech.cs7450.xnat.XNATResultSet.XNATResultSetRow;
 
 public class XNATScatterPlotTableReader {
 	private static final Logger _log = Logger.getLogger(XNATScatterPlotTableReader.class);
-
-	public static class NumberTable extends Table {
-		private static HashMap<Class<?>, Method> parseMethods = new HashMap<Class<?>, Method>();
-
-		// FIXME this is an ugly hack to allow null values in int/float columns
-		@Override
-		public void addColumn(String name, Class type, Object defaultValue) {
-			if( !checkClass(type) ) {
-				super.addColumn(name, type, defaultValue);
-			} else {
-				int nextRow = m_rows.getMaximumRow() + 1;
-				addColumn(name, new ObjectColumn(type, nextRow, nextRow, defaultValue) {
-					public void set(Object val, int row) {
-						try {
-							if( val != null && val.getClass() == String.class )
-								val = parse(getColumnType(), val.toString().trim());
-						} catch( DataParseException e ) {
-							_log.error(e);
-						}
-						super.set(val, row);
-					}
-				});
-			}
-		}
-
-		public static Object parse(Class<?> type, String text) throws DataParseException {
-			if( !checkClass(type) )
-				throw new DataParseException(type.getName() + " not a number.");
-			
-			// empty strings are treated as null
-			if( text == null || (text = text.trim()).isEmpty() )
-				return null;
-			
-			// try to parse it with valueOf() method
-			try {
-				Method valueOf = parseMethods.get(type);
-				return valueOf.invoke(null, text);
-			} catch( Exception e ) {
-				_log.error(e.getMessage(), e);
-				throw new DataParseException(e);
-			}
-		}
-
-		public static boolean checkClass(final Class<?> type) {
-			if( type == null || !Number.class.isAssignableFrom(type) )
-				return false;
-			if( parseMethods.containsKey(type) )
-				return true;
-			
-			try {
-				Method valueOf = type.getDeclaredMethod("valueOf", String.class);
-				if( 0 != (valueOf.getModifiers() & Modifier.STATIC) && type.equals(valueOf.getReturnType()) ) {
-					parseMethods.put(type, valueOf);
-					return true;
-				}
-				_log.error("Bad method signature: " + valueOf.toGenericString());
-			} catch ( Exception e ) {
-				_log.error(e.getMessage(), e);
-			}
-			
-			return false;
-		}
+	
+	public static final HashMap<SearchField, String> fieldToCol = new HashMap<SearchField, String>();
+	static {
+		fieldToCol.put(Sessions.PROJECT, "Project");
+		fieldToCol.put(Sessions.SUBJECT_ID, "Subject");
+		fieldToCol.put(Sessions.SESSION_ID, "Experiments");
+		fieldToCol.put(Scans.TYPE, "Scan type");
+		fieldToCol.put(Scans.SERIES_DESCRIPTION, "series desc");
+		fieldToCol.put(Scans.FRAMES, "Frames Image Type");
+		fieldToCol.put(Scans.FIELDSTRENGTH, "Field Strength");
+		fieldToCol.put(Scans.QUALITY, "Quality");
+		fieldToCol.put(Scans.PARAMETERS_VOXELRES_X, "VRx");
+		fieldToCol.put(Scans.PARAMETERS_VOXELRES_Y, "VRy");
+		fieldToCol.put(Scans.PARAMETERS_VOXELRES_Z, "VRz");
+		fieldToCol.put(Scans.PARAMETERS_FOV_X, "FOVx");
+		fieldToCol.put(Scans.PARAMETERS_FOV_Y, "FOVy");
+		fieldToCol.put(Scans.PARAMETERS_TE, "TE");
+		fieldToCol.put(Scans.PARAMETERS_TR, "TR");
+		fieldToCol.put(Scans.PARAMETERS_TI, "TI");
+		fieldToCol.put(Scans.PARAMETERS_FLIP, "Flip");
 	}
-	public static Table convertResultSet(XNATResultSet result) {
+
+	public static Table convertResultSet(XNATResultSet result, Collection<? extends SearchField> requiredFields) {
 		if( result == null ) throw new NullPointerException("result is null");
 		final boolean _debug = _log.isDebugEnabled();
 
@@ -113,43 +69,64 @@ public class XNATScatterPlotTableReader {
 			Scans.PARAMETERS_FLIP
 			// FIXME scatterplot expects image data here
 		);
-		LinkedHashSet<SearchField> requiredFields = new LinkedHashSet<SearchField>(Arrays.asList(
-			Sessions.PROJECT,
-			Sessions.SUBJECT_ID,
-			Sessions.SESSION_ID,
-			Scans.TYPE,
-			Scans.FRAMES, 
-			Scans.FIELDSTRENGTH, 
-			Scans.PARAMETERS_VOXELRES_X,
-			Scans.PARAMETERS_VOXELRES_Y,
-			Scans.PARAMETERS_VOXELRES_Z,
-			Scans.PARAMETERS_FOV_X,
-			Scans.PARAMETERS_FOV_Y,
-			Scans.PARAMETERS_TR, 
-			Scans.PARAMETERS_TE, 
-			Scans.PARAMETERS_TI
-			
-		));
+		
+		if( requiredFields == null ) {
+			requiredFields = new LinkedHashSet<SearchField>(Arrays.asList(
+				Sessions.PROJECT,
+				Sessions.SUBJECT_ID,
+				Sessions.SESSION_ID,
+				Scans.TYPE,
+				Scans.FRAMES, 
+				Scans.FIELDSTRENGTH, 
+				Scans.PARAMETERS_VOXELRES_X,
+				Scans.PARAMETERS_VOXELRES_Y,
+				Scans.PARAMETERS_VOXELRES_Z,
+				Scans.PARAMETERS_FOV_X,
+				Scans.PARAMETERS_FOV_Y,
+				Scans.PARAMETERS_TR, 
+				Scans.PARAMETERS_TE, 
+				Scans.PARAMETERS_TI
+				
+			));
+		}
+		
+//		LinkedHashSet<SearchField> requiredFields = new LinkedHashSet<SearchField>(Arrays.asList(
+//			Sessions.PROJECT,
+//			Sessions.SUBJECT_ID,
+//			Sessions.SESSION_ID,
+//			Scans.TYPE,
+//			Scans.FRAMES, 
+//			Scans.FIELDSTRENGTH, 
+//			Scans.PARAMETERS_VOXELRES_X,
+//			Scans.PARAMETERS_VOXELRES_Y,
+//			Scans.PARAMETERS_VOXELRES_Z,
+//			Scans.PARAMETERS_FOV_X,
+//			Scans.PARAMETERS_FOV_Y,
+//			Scans.PARAMETERS_TR, 
+//			Scans.PARAMETERS_TE, 
+//			Scans.PARAMETERS_TI
+//			
+//		));
 		
 		// FIXME make scatterplot use the field ids so this is not necessary
-		HashMap<SearchField, String> fieldToCol = new HashMap<SearchField, String>();
-		fieldToCol.put(Sessions.PROJECT, "Project");
-		fieldToCol.put(Sessions.SUBJECT_ID, "Subject");
-		fieldToCol.put(Sessions.SESSION_ID, "Experiments");
-		fieldToCol.put(Scans.TYPE, "Scan type");
-		fieldToCol.put(Scans.SERIES_DESCRIPTION, "series desc");
-		fieldToCol.put(Scans.FRAMES, "Frames Image Type");
-		fieldToCol.put(Scans.FIELDSTRENGTH, "Field Strength");
-		fieldToCol.put(Scans.QUALITY, "Quality");
-		fieldToCol.put(Scans.PARAMETERS_VOXELRES_X, "VRx");
-		fieldToCol.put(Scans.PARAMETERS_VOXELRES_Y, "VRy");
-		fieldToCol.put(Scans.PARAMETERS_VOXELRES_Z, "VRz");
-		fieldToCol.put(Scans.PARAMETERS_FOV_X, "FOVx");
-		fieldToCol.put(Scans.PARAMETERS_FOV_Y, "FOVy");
-		fieldToCol.put(Scans.PARAMETERS_TE, "TE");
-		fieldToCol.put(Scans.PARAMETERS_TR, "TR");
-		fieldToCol.put(Scans.PARAMETERS_TI, "TI");
-		fieldToCol.put(Scans.PARAMETERS_FLIP, "Flip");
+//		HashMap<SearchField, String> fieldToCol = new HashMap<SearchField, String>();
+//		fieldToCol.put(Sessions.PROJECT, "Project");
+//		fieldToCol.put(Sessions.SUBJECT_ID, "Subject");
+//		fieldToCol.put(Sessions.SESSION_ID, "Experiments");
+//		fieldToCol.put(Scans.TYPE, "Scan type");
+//		fieldToCol.put(Scans.SERIES_DESCRIPTION, "series desc");
+//		fieldToCol.put(Scans.FRAMES, "Frames Image Type");
+//		fieldToCol.put(Scans.FIELDSTRENGTH, "Field Strength");
+//		fieldToCol.put(Scans.QUALITY, "Quality");
+//		fieldToCol.put(Scans.PARAMETERS_VOXELRES_X, "VRx");
+//		fieldToCol.put(Scans.PARAMETERS_VOXELRES_Y, "VRy");
+//		fieldToCol.put(Scans.PARAMETERS_VOXELRES_Z, "VRz");
+//		fieldToCol.put(Scans.PARAMETERS_FOV_X, "FOVx");
+//		fieldToCol.put(Scans.PARAMETERS_FOV_Y, "FOVy");
+//		fieldToCol.put(Scans.PARAMETERS_TE, "TE");
+//		fieldToCol.put(Scans.PARAMETERS_TR, "TR");
+//		fieldToCol.put(Scans.PARAMETERS_TI, "TI");
+//		fieldToCol.put(Scans.PARAMETERS_FLIP, "Flip");
 		
 		HashMap<String, Class<?>> typeMap = new HashMap<String, Class<?>>(6);
 		typeMap.put("string", String.class);
@@ -206,7 +183,14 @@ public class XNATScatterPlotTableReader {
 			for( SearchField field : fields ) {
 				try {
 					String fieldVal = row.getValue(field);
+					
+					// don't set missing numeric values
 					Class<?> type = typeMap.get(field.getType());
+					if( Number.class.isAssignableFrom(type) && fieldVal == null || "".equals(fieldVal.trim()) ) {
+						++colIdx;
+						continue;
+					}
+					
 					table.set(rowIdx, colIdx++, fieldVal);
 				} catch( DataTypeException e ) {
 					_log.error("Problem with field: " + field, e);

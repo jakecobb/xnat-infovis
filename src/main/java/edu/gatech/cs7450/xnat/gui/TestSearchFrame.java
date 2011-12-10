@@ -363,7 +363,7 @@ public class TestSearchFrame extends JFrame {
 		XNATSearch search = new XNATSearch(conn);
 		XNATResultSet result = search.runSearch(where);
 		
-		Table table = XNATScatterPlotTableReader.convertResultSet(result);
+		Table table = XNATScatterPlotTableReader.convertResultSet(result, null);
 
 
       JFrame frame = new JFrame("XNAT Visualizer");
