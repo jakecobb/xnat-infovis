@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -41,6 +42,11 @@ import org.xml.sax.SAXParseException;
 public class XNATResultSet extends XNATTableResult {
 	/** Logging. */
 	private static final Logger _log = Logger.getLogger(XNATResultSet.class);
+	
+	/** Match bad entities (e.g. unescaped '&') in input XML, used by <code>wrapStringData(String)</code>. */
+	private static final Pattern badEntities = Pattern.compile("&(#\\d{1,4}|\\w+)([^;]|$)", Pattern.CASE_INSENSITIVE);
+	/** Replacement for bad entities, used by <code>wrapStringData(String)</code>. */
+	private static final String BAD_ENT_REPLACEMENT = "&amp;$1$2";
 	
 	/** Expected attribute names for search field columns. */
 	@SuppressWarnings("unused")
@@ -105,6 +111,19 @@ public class XNATResultSet extends XNATTableResult {
 			this.requiredFieldValues = new HashSet<SearchField>(requiredValues);
 		
 		this.parseData(in);
+	}
+	
+	/** 
+	 * {@inheritDoc}
+	 * Extends super to fix bad entity sequences. 
+	 */
+	@Override
+	protected InputStream wrapStringData(String data) {
+		// guard against malformed (unescaped) XML in the xNAT response
+		data = badEntities.matcher(data).replaceAll(BAD_ENT_REPLACEMENT);
+		
+		// now wrap as usual
+		return super.wrapStringData(data);
 	}
 	
 	/** 
