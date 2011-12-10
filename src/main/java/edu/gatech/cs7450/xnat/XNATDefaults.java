@@ -19,6 +19,7 @@ public class XNATDefaults {
 	
 	/** The default scan fields we are supporting. */
 	public static final List<SearchField> DEFAULT_SCAN_FIELDS = unmodifiableList(asList(
+		Scans.ID,
 		Scans.TYPE,
 		Scans.COIL,
 		Scans.QUALITY,
@@ -57,7 +58,8 @@ public class XNATDefaults {
 		Scans.TYPE,
 		Scans.COIL,
 		Scans.QUALITY,
-		Scans.PARAMETERS_IMAGETYPE
+		Scans.PARAMETERS_IMAGETYPE,
+		Scans.FIELDSTRENGTH // tends to be numeric, but schema type is string
 	));
 	
 	/** Numeric / quantitative fields for e.g. the scatterplot. */
@@ -71,8 +73,7 @@ public class XNATDefaults {
 		Scans.PARAMETERS_VOXELRES_Y,
 		Scans.PARAMETERS_VOXELRES_Z,
 		Scans.PARAMETERS_FLIP,
-		Scans.FRAMES,
-		Scans.FIELDSTRENGTH
+		Scans.FRAMES
 	));
 	
 	private XNATDefaults() { }

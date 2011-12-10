@@ -10,7 +10,6 @@ import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -246,9 +245,9 @@ public class ScatterPlotDialog extends JDialog {
 		
 		try {			
 			Table scatterPlotTable = XNATScatterPlotTableReader.convertResultSet(searchResult, requiredFields);
-			Map<SearchField, String> fieldToCol = XNATScatterPlotTableReader.fieldToCol;
-			XNATScatterPlot scatterPlot = new XNATScatterPlot(scatterPlotTable, fieldToCol.get(xField), fieldToCol.get(yField), 
-				fieldToCol.get(sizeField), fieldToCol.get(shapeField), fieldToCol.get(colorField));
+			String sizeColumn = sizeField != null ? sizeField.getFieldId() : XNATScatterPlotTableReader.CONSTANT_SIZE_COL;
+			XNATScatterPlot scatterPlot = new XNATScatterPlot(scatterPlotTable, xField.getFieldId(), 
+				yField.getFieldId(), sizeColumn, shapeField.getFieldId(), colorField.getFieldId());
 
 	      JFrame frame = new JFrame("XNAT Visualizer");
 

@@ -73,7 +73,6 @@ public class HTMLToolTipControl extends ControlAdapter {
 				else
 					isFirst = false;
 				
-				// FIXME escaping?
 				if( showLabel ) {
 					String label = labelOverrides != null ? labelOverrides[i] : null;
 					if( label == null )
