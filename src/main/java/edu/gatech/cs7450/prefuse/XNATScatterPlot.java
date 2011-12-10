@@ -14,7 +14,6 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
@@ -275,12 +274,16 @@ public class XNATScatterPlot extends JPanel {
         
         // add the x-axis
         AxisLayout xaxis = new AxisLayout(my_group, xdata, Constants.X_AXIS, VisiblePredicate.TRUE);
+        
+        RangeQueryBinding xRange = new RangeQueryBinding(vt, xdata);
+        AndPredicate xFilter = new AndPredicate(xRange.getPredicate());
+        xaxis.setRangeModel(xRange.getModel());
 
         // ensure the axis spans the width of the data container
         xaxis.setLayoutBounds(g_dataB);
 
         // add the labels to the x-axis
-        AxisLabelLayout xlabels = new AxisLabelLayout("xlab", xaxis, g_xlabB, 15);
+        AxisLabelLayout xlabels = new AxisLabelLayout("xlab", xaxis, g_xlabB);
 
         /*
          * Step 3: Add the Y-Axis and its dynamic query feature
@@ -294,16 +297,12 @@ public class XNATScatterPlot extends JPanel {
 
         // set the range controls on the y-axis
         yaxis.setRangeModel(populationQ.getModel());
-        populationQ.getNumberModel().setValueRange(0, 11000, 0, 11000);
 
         // ensure the y-axis spans the height of the data container
         yaxis.setLayoutBounds(g_dataB);
 
         // add the labels to the y-axis
         AxisLabelLayout ylabels = new AxisLabelLayout("ylab", yaxis, g_ylabB);
-        NumberFormat nf = NumberFormat.getIntegerInstance();
-        nf.setMaximumFractionDigits(0);
-        ylabels.setNumberFormat(nf);
 
         /* 
          * Step 4: Add the search box
@@ -387,6 +386,8 @@ public class XNATScatterPlot extends JPanel {
         // the user adjusts the axis parameters, or enters a name for filtering), the 
         // visualization is updated
         filter.addExpressionListener(lstnr);
+        xFilter.addExpressionListener(lstnr);
+        
      // fisheye distortion based on the current anchor location
         ActionList distort = new ActionList();
         double m_scale = 7;  
@@ -464,23 +465,32 @@ public class XNATScatterPlot extends JPanel {
         g_display.addControlListener(hoverc); 
         
 
+        MouseAdapter sliderAdapter = new MouseAdapter() {
+
+           public void mousePressed(MouseEvent e) {
+               g_display.setHighQuality(false);
+           }
+
+           public void mouseReleased(MouseEvent e) {
+               g_display.setHighQuality(true);
+               g_display.repaint();
+           }
+       };
         // vertical slider for adjusting the population filter (Yaxis display filter on slider)
         JRangeSlider slider = populationQ.createVerticalRangeSlider();
         slider.setThumbColor(null);
         slider.setToolTipText("drag the arrows to filter the data");
         // smallest window: 200,000
         slider.setMinExtent(100);
-        slider.addMouseListener(new MouseAdapter() {
-
-            public void mousePressed(MouseEvent e) {
-                g_display.setHighQuality(false);
-            }
-
-            public void mouseReleased(MouseEvent e) {
-                g_display.setHighQuality(true);
-                g_display.repaint();
-            }
-        });
+        slider.addMouseListener(sliderAdapter);
+        
+        // horizontal slide
+        JRangeSlider xSlider = xRange.createHorizontalRangeSlider();
+        xSlider.setThumbColor(null);
+        xSlider.setToolTipText("Drag to adjust the visible range.");
+        xSlider.setMinExtent(100);
+        xSlider.addMouseListener(sliderAdapter);
+        
 
         //search box
         JSearchPanel searcher = searchQ.createSearchPanel();
@@ -512,13 +522,18 @@ public class XNATScatterPlot extends JPanel {
         topContainer.add(Box.createHorizontalStrut(5));
 
         // container for elements at the bottom of the screen
-        Box bottomContainer = new Box(BoxLayout.X_AXIS);
-        bottomContainer.add(Box.createHorizontalStrut(5));
-        bottomContainer.add(searcher);
-        bottomContainer.add(searcher1);
-        bottomContainer.add(Box.createHorizontalGlue());
-        bottomContainer.add(Box.createHorizontalStrut(5));
-        bottomContainer.add(Box.createHorizontalStrut(16));
+        Box searchContainer = new Box(BoxLayout.X_AXIS);
+        searchContainer.add(Box.createHorizontalStrut(5));
+        searchContainer.add(searcher);
+        searchContainer.add(searcher1);
+        searchContainer.add(Box.createHorizontalGlue());
+        searchContainer.add(Box.createHorizontalStrut(5));
+        searchContainer.add(Box.createHorizontalStrut(16));
+        
+        Box bottomContainer = new Box(BoxLayout.Y_AXIS);
+        bottomContainer.add(xSlider);
+        bottomContainer.add(Box.createVerticalStrut(5));
+        bottomContainer.add(searchContainer);
 
         // fonts, colours, etc.
         UILib.setColor(this, ColorLib.getColor(255, 255, 255), Color.GRAY);
