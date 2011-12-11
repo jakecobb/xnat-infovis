@@ -1,4 +1,4 @@
-package prefuse.demos;
+package edu.gatech.cs7450.prefuse;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
