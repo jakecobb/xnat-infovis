@@ -2,7 +2,6 @@ package edu.gatech.cs7450.prefuse;
 /**
  * The Size of the scan group has been fixed and the colors have been fixed
  */
-import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -10,6 +9,7 @@ import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,7 +33,6 @@ import prefuse.action.ActionList;
 import prefuse.action.RepaintAction;
 import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.DataColorAction;
-import prefuse.action.assignment.StrokeAction;
 import prefuse.action.layout.graph.ForceDirectedLayout;
 import prefuse.activity.Activity;
 import prefuse.controls.ControlAdapter;
@@ -41,6 +40,7 @@ import prefuse.controls.DragControl;
 import prefuse.controls.FocusControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.ZoomControl;
+import prefuse.controls.ZoomToFitControl;
 import prefuse.data.Graph;
 import prefuse.data.Node;
 import prefuse.data.Table;
@@ -64,6 +64,7 @@ import prefuse.visual.NodeItem;
 import prefuse.visual.VisualItem;
 import edu.gatech.cs7450.Pair;
 import edu.gatech.cs7450.prefuse.controls.HTMLToolTipControl;
+import edu.gatech.cs7450.prefuse.controls.TableToolTipControl;
 
 public class ScanGroupView extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -121,6 +122,7 @@ public class ScanGroupView extends JPanel {
 		display = new Display(vis);
 		display.setSize(minSize);
 		display.setMinimumSize(minSize);
+		display.setHighQuality(true);
 		
 		this.setFocusable(false);
 		if( _log.isTraceEnabled() ) {
@@ -135,9 +137,9 @@ public class ScanGroupView extends JPanel {
 		}
 		
 		// tooltips
-		HTMLToolTipControl toolTipControl = new HTMLToolTipControl("scanGroup", "type");
+		HTMLToolTipControl toolTipControl = new TableToolTipControl("scanGroup", "type");
 		toolTipControl.setShowLabel(true);
-		toolTipControl.setLabelOverrides("<b>ID:</b> ", "<b>Type:</b> ");
+		toolTipControl.setLabelOverrides("ID:", "Type:");
 		display.addControlListener(toolTipControl);
 		
 		// double-click to toggle fixed position
@@ -213,14 +215,21 @@ public class ScanGroupView extends JPanel {
 				if( !SwingUtilities.isLeftMouseButton(e) ) return;
 				
 				// super doesn't remove the fixed setting unless it was dragged, causing it to become stuck
-				// FIXME: reflection to nullify activeItem if needed
-//            activeItem = null;
+				try {
+					// nullify the private activeItem field
+					Field activeItem = DragControl.class.getDeclaredField("activeItem");
+					activeItem.setAccessible(true);
+					activeItem.set(this, null);
+				} catch( Exception ex ) {
+					_log.error("Couldn't nullify activeItem.", ex);
+				}
             item.getTable().removeTableListener(this);
             if ( resetItem ) item.setFixed(wasFixed);
             dragged = false;
 			}
 		});
 		display.addControlListener(new PanControl());
+		display.addControlListener(new ZoomToFitControl());
 		display.addControlListener(new ZoomControl());
 		display.addControlListener(new FocusControl(1, "color"));
 		display.addControlListener(new ControlAdapter() {
@@ -347,11 +356,25 @@ public class ScanGroupView extends JPanel {
 		HashSet<String> availableColors = new LinkedHashSet<String>(colorLabels); // colors not already used by a scan group
 		colorLabels.add("subjectColor");
 		
-		DataColorAction fill = new DataColorAction("graph.nodes", "color", Constants.NOMINAL, VisualItem.FILLCOLOR, pallete);
+		DataColorAction fill = new DataColorAction("graph.nodes", "color", Constants.NOMINAL, VisualItem.FILLCOLOR, pallete) {
+			@Override
+			public int getColor(VisualItem item) {
+				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
+					return ColorLib.gray(0);
+				return super.getColor(item);
+			}
+		};
 		fill.setOrdinalMap(colorLabels.toArray());
 		
 		// Colors for text and edges
-		ColorAction text = new ColorAction("graph.nodes" , VisualItem.TEXTCOLOR, ColorLib.gray(0));
+		ColorAction text = new ColorAction("graph.nodes" , VisualItem.TEXTCOLOR, ColorLib.gray(0)) {
+			@Override
+			public int getColor(VisualItem item) {
+				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
+					return ColorLib.gray(255);
+				return super.getColor(item);
+			}
+		};
 		
 		DataColorAction edgeColors = new DataColorAction("graph.edges", "color", Constants.NOMINAL, VisualItem.STROKECOLOR, pallete);
 		edgeColors.setOrdinalMap(colorLabels.toArray());
@@ -393,28 +416,7 @@ public class ScanGroupView extends JPanel {
 		
 		unusedColors.addAll(availableColors);
 		
-		ColorAction focusBorder = new ColorAction("graph.nodes", VisualItem.STROKECOLOR) {
-			@Override
-			public int getColor(VisualItem item) {
-				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
-					return ColorLib.gray(0);
-				return item.getFillColor();
-			}
-		};
-		StrokeAction focusStroke = new StrokeAction("graph.nodes") {
-			private BasicStroke focusStroke = new BasicStroke(3.0f);
-			@Override
-			public BasicStroke getStroke(VisualItem item) {
-				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
-					return focusStroke;
-				return defaultStroke;
-					
-			}
-		};
-		
 		ActionList color = new ActionList();
-		color.add(focusBorder);
-		color.add(focusStroke);
 		color.add(fill);
 		color.add(text);
 		color.add(edgeColors);
