@@ -85,6 +85,18 @@ public class TreeView extends Display {
     public static String[] path = new String[50];
     static String pt;
     static int len;
+    
+    /** Types of nodes expected. */
+    public static enum NodeType {
+   	 PROJECT,
+   	 SUBJECT,
+   	 SESSION,
+   	 SCAN;
+   	 
+   	 public static final String COLUMN = "node_type";
+    }
+    
+    
     private LabelRenderer m_nodeRenderer;
     private EdgeRenderer m_edgeRenderer;
     
@@ -300,23 +312,29 @@ public class TreeView extends Display {
     public static JComponent demo() {
         return demo(TREE_CHI, "name");
     }
-    
+
     public static JComponent demo(String datafile, final String label) {
+       Tree dataTree = null;
+       try {
+           dataTree = (Tree)new TreeMLReader().readGraph(datafile);
+           System.out.println("node.schema=" + dataTree.getNodeTable().getSchema());
+           System.out.println("edge.schema=" + dataTree.getEdgeTable().getSchema());
+           System.out.println("###"+dataTree);
+           System.out.println(label);
+       } catch ( Exception e ) {
+           e.printStackTrace();
+           System.exit(1);
+       }
+       
+       return demo(dataTree, label);
+    }
+    
+    public static JComponent demo(Tree dataTree, final String label) {
         Color BACKGROUND = Color.WHITE;
         Color FOREGROUND = Color.BLACK;
         
-        Tree t = null;
-        try {
-            t = (Tree)new TreeMLReader().readGraph(datafile);
-            System.out.println("###"+t);
-            System.out.println(label);
-        } catch ( Exception e ) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        
         // create a new treemap
-        final TreeView tview = new TreeView(t, label);
+        final TreeView tview = new TreeView(dataTree, label);
         tview.setBackground(BACKGROUND);
         tview.setForeground(FOREGROUND);
         
