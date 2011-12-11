@@ -13,8 +13,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -29,10 +31,21 @@ public class XNATTableResult {
 	
 	/** The headers / column names. */
 	protected List<String> headers;
+	
 	/** Map header name to order. */
 	protected Map<String, Integer> headerPosition;
+	
 	/** The data rows. */
 	protected List<? extends XNATTableRow> rows;
+	
+	/** Required headers, throw an exception if any are missing. */
+	protected Set<String> requiredHeaders = Collections.emptySet();
+	
+	/** Required values, rows without these will be filtered out. */
+	protected Set<String> requiredValues = Collections.emptySet();
+	
+	/** Count number of discarded rows. */
+	protected int filteredRows = 0;
 	
 	/**
 	 * Parses a result from the given CSV input.
@@ -44,7 +57,27 @@ public class XNATTableResult {
 		if( csvData == null ) throw new NullPointerException("csvData is null");
 		
 		this.parseData(wrapStringData(csvData));
-		this.mapHeaders();
+	}
+	
+	/**
+	 * Parses a result from the given CSV input.
+	 * 
+	 * @param csvData the data to parse
+	 * @param requiredHeaders require the given search fields are present, may be <code>null</code>
+	 * @param requiredValues  filter out rows missing values for these fields, may be <code>null</code>
+	 * @throws IOException if there is an error parsing
+	 * @throws NullPointerException if <code>csvData</code> is <code>null</code>
+	 */
+	public XNATTableResult(String csvData, Collection<String> requiredHeaders, Collection<String> requiredValues) 
+			throws IOException {
+		if( csvData == null ) throw new NullPointerException("reader is null");
+		
+		if( requiredHeaders != null )
+			this.requiredHeaders = new HashSet<String>(requiredHeaders);
+		if( requiredValues != null )
+			this.requiredValues = new HashSet<String>(requiredValues);
+			
+		this.parseData(wrapStringData(csvData));
 	}
 	
 	/**
@@ -62,7 +95,31 @@ public class XNATTableResult {
 		if( input == null ) throw new NullPointerException("reader is null");
 		
 		this.parseData(input);
-		this.mapHeaders();
+	}
+
+	/**
+	 * Parses a result from the given reader.
+	 * <p>
+	 * Note the reader is not closed, the caller is responsible for closing it 
+	 * if needed.
+	 * </p>
+	 * 
+	 * @param input the reader
+	 * @param requiredHeaders require the given search fields are present, may be <code>null</code>
+	 * @param requiredValues  filter out rows missing values for these fields, may be <code>null</code>
+	 * @throws IOException if there is an error parsing
+	 * @throws NullPointerException if <code>reader</code> is <code>null</code>
+	 */
+	public XNATTableResult(InputStream input, Collection<String> requiredHeaders, Collection<String> requiredValues) 
+			throws IOException {
+		if( input == null ) throw new NullPointerException("reader is null");
+		
+		if( requiredHeaders != null )
+			this.requiredHeaders = new HashSet<String>(requiredHeaders);
+		if( requiredValues != null )
+			this.requiredValues = new HashSet<String>(requiredValues);
+			
+		this.parseData(input);
 	}
 	
 	/** For subclasses to avoid the other constructors. */
@@ -99,14 +156,47 @@ public class XNATTableResult {
 			throw new IOException("Header fields was null or empty.");
 		
 		headers = new ArrayList<String>(Arrays.asList(fields));
+		afterHeaders();
+		
+		int[] required = new int[requiredValues.size()];
+		int i = 0; for( String field : requiredValues ) {
+			required[i++] = headerPosition.get(field);
+		}
 		
 		// now create rows
 		ArrayList<XNATTableRow> rows = new ArrayList<XNATTableRow>();
-		while( null != (fields = csv.readNext()) ) {
+		readLoop: while( null != (fields = csv.readNext()) ) {
+			for( int reqPos : required ) {
+				if( reqPos > fields.length || "".equals(fields[reqPos].trim()) ) {
+					_log.warn("Filtered field missing: " + headers.get(reqPos));
+					++filteredRows;
+					continue readLoop;
+				}
+			}
 			rows.add(new XNATTableRow(fields));
 		}
 		rows.trimToSize();
 		this.rows = rows;
+	}
+	
+	/**
+	 * Should be called after <code>headers</code> has been set.
+	 * @throws XNATException if required headers are missing
+	 */
+	protected void afterHeaders() throws XNATException {
+		mapHeaders();
+		checkRequiredHeaders();
+	}
+	
+	/**
+	 * Verify required headers are present.
+	 * @throws XNATException if a required header is missing
+	 */
+	protected void checkRequiredHeaders() throws XNATException {
+		HashSet<String> required = new HashSet<String>(requiredHeaders);
+		required.removeAll(headers);
+		if( required.size() > 0 )
+			throw new XNATException("Missing required headers: " + required);
 	}
 	
 	/**
@@ -134,6 +224,14 @@ public class XNATTableResult {
 	 */
 	public List<? extends XNATTableRow> getRows() {
 		return Collections.unmodifiableList(rows);
+	}
+	
+	/**
+	 * Return the number of rows filtered for missing required values;
+	 * @return number of filtered rows
+	 */
+	public int getFilteredRows() {
+		return filteredRows;
 	}
 	
 	/**
@@ -223,7 +321,6 @@ public class XNATTableResult {
 			}
 			
 			return missing;
-			
 		}
 		
 		/**

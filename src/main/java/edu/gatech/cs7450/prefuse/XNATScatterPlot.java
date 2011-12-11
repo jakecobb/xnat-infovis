@@ -3,6 +3,7 @@ package edu.gatech.cs7450.prefuse;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,7 +12,9 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Rectangle2D;
-import java.text.NumberFormat;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -19,6 +22,9 @@ import javax.swing.BoxLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+
+import org.apache.commons.lang.WordUtils;
+import org.apache.log4j.Logger;
 
 import prefuse.Constants;
 import prefuse.Display;
@@ -38,14 +44,11 @@ import prefuse.action.layout.AxisLayout;
 import prefuse.controls.AnchorUpdateControl;
 import prefuse.controls.Control;
 import prefuse.controls.ControlAdapter;
-import prefuse.controls.ToolTipControl;
 import prefuse.data.Table;
 import prefuse.data.expression.AndPredicate;
 import prefuse.data.io.CSVTableReader;
-import prefuse.data.query.ListQueryBinding;
 import prefuse.data.query.RangeQueryBinding;
 import prefuse.data.query.SearchQueryBinding;
-import prefuse.demos.XNATscatterviz.Counter;
 import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.AxisRenderer;
 import prefuse.render.Renderer;
@@ -61,13 +64,92 @@ import prefuse.util.ui.UILib;
 import prefuse.visual.VisualItem;
 import prefuse.visual.VisualTable;
 import prefuse.visual.expression.VisiblePredicate;
+import edu.gatech.cs7450.prefuse.controls.HTMLToolTipControl;
+import edu.gatech.cs7450.prefuse.controls.TableToolTipControl;
+import edu.gatech.cs7450.xnat.XNATConstants.Scans;
+import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
 
 public class XNATScatterPlot extends JPanel {
-
-    /**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
+	private static final Logger _log = Logger.getLogger(XNATScatterPlot.class);
+	
+	/**
+	 * Names for the columns we are supporting.
+	 */
+	public static class Columns {
+		public static final String PROJECT = Sessions.PROJECT.getFieldId();
+		public static final String SUBJECT = Sessions.SUBJECT_ID.getFieldId();
+		public static final String SESSION = Sessions.SESSION_ID.getFieldId();
+		public static final String SCAN = Scans.ID.getFieldId();
+		
+		public static final String SERIES_DESCRIPTION  = Scans.SERIES_DESCRIPTION.getFieldId();
+		public static final String SCAN_TYPE = Scans.TYPE.getFieldId();
+		public static final String IMAGE_TYPE = Scans.PARAMETERS_IMAGETYPE.getFieldId();
+		public static final String FIELDSTRENGTH  = Scans.FIELDSTRENGTH.getFieldId();
+		public static final String FRAMES  = Scans.FRAMES.getFieldId();
+		public static final String QUALITY  = Scans.QUALITY.getFieldId();
+		public static final String PARAMETERS_VOXELRES_X  = Scans.PARAMETERS_VOXELRES_X.getFieldId();
+		public static final String PARAMETERS_VOXELRES_Y  = Scans.PARAMETERS_VOXELRES_Y.getFieldId();
+		public static final String PARAMETERS_VOXELRES_Z  = Scans.PARAMETERS_VOXELRES_Z.getFieldId();
+		public static final String PARAMETERS_FOV_X  = Scans.PARAMETERS_FOV_X.getFieldId();
+		public static final String PARAMETERS_FOV_Y  = Scans.PARAMETERS_FOV_Y.getFieldId();
+		public static final String PARAMETERS_TR  = Scans.PARAMETERS_TR.getFieldId();
+		public static final String PARAMETERS_TE  = Scans.PARAMETERS_TE.getFieldId();
+		public static final String PARAMETERS_TI  = Scans.PARAMETERS_TI.getFieldId();
+		public static final String PARAMETERS_FLIP  = Scans.PARAMETERS_FLIP.getFieldId();
+	}
+	
+	/**
+	 * Creates a tool-tip control for all the columns we support.
+	 * @return the tool-tip control
+	 */
+	private static HTMLToolTipControl createToolTipControl() {
+		
+		// pull the columns by reflection to avoid re-listing here
+		Field[] reflectedFields = Columns.class.getDeclaredFields();
+		ArrayList<String> fields = new ArrayList<String>(reflectedFields.length);
+		ArrayList<String> labels = new ArrayList<String>(reflectedFields.length);
+		for( int i = 0; i < reflectedFields.length; ++i ) {
+			Field reflectedField = reflectedFields[i];
+
+			// should all be static strings, guard just in case
+			if( 0 != (reflectedField.getModifiers() & Modifier.STATIC) && reflectedField.getType().equals(String.class) ) {
+				
+				String name = reflectedField.getName();
+				String label = name;
+				
+				// handle a couple special cases
+				if( "FIELDSTRENGTH".equalsIgnoreCase(name) ) {
+					label = "Field Strength";
+				} else if ( "PARAMETERS_FLIP".equalsIgnoreCase(name) ) {
+					label = "Flip";
+				}
+				
+				// params other than flip will not be capitalized
+				boolean isParam = label.startsWith("PARAMETERS_");
+				if( isParam )
+					label = label.replace("PARAMETERS_", "");
+				label = label.replace("_", " ");
+				if( !isParam )
+					label = WordUtils.capitalizeFully(label);
+				
+				try {
+					String columnField = (String)reflectedField.get(null);
+					fields.add(columnField);
+					labels.add(label);
+				} catch( IllegalAccessException e ) {
+					_log.error("Could not access field. [name=" + name + ", label=" + label + "]");
+				}
+			}
+		}
+		
+		// create and return the control
+		TableToolTipControl toolTipControl = 
+			new TableToolTipControl(fields.toArray(new String[fields.size()]));
+		toolTipControl.setShowLabel(true);
+		toolTipControl.setLabelOverrides(labels.toArray(new String[labels.size()]));
+		return toolTipControl;
+	}
 
 	/*
      * main execution class (for running as an applet)
@@ -133,15 +215,22 @@ public class XNATScatterPlot extends JPanel {
     private String shape_data;
     private String color_data;
     private String my_group ;
+
     
     /*
      * Constructor for the class 
      * This is where all the important stuff happens
      */
     public XNATScatterPlot(Table t) {
+   	 this(t, Columns.PARAMETERS_TE, Columns.PARAMETERS_TR, Columns.PARAMETERS_FOV_X, 
+   		 Columns.SUBJECT, Columns.SESSION);
+    }
+    
+    public XNATScatterPlot(Table t, String xField, String yField, String sizeField, String shapeField, String colorField) {
         super(new BorderLayout());
         //Setting the various filter fields 
-        scatter_set("TE" , "TR" , "FOVx" , "Subject" , "Experiments" , "xnatdata");
+        scatter_set(xField , yField , sizeField , shapeField , colorField, "xnatdata");
+        
         /*
          * Step 1: Setup the Visualization
          */
@@ -153,11 +242,6 @@ public class XNATScatterPlot extends JPanel {
         // create a visual abstraction of the table data (loaded in the buildFrame method)
         // call our data "xnatdata"
         VisualTable vt = vis.addTable(my_group, t);
-        
-        // add a new column containing a label string showing all information for the tooltip
-        //TODO: display images and format the tooltip display!!
-        // note: uses the prefuse expression language
-        vt.addColumn("label", "CONCAT('Project : ',[Project] ,' Subject: ',	[Subject],	[Experiments],	[Scan type], [series desc] ,	[Frames Image Type],	[Field Strength], [Quality] , [VRx], [VRy],	[VRz],	[FOVx],	[FOVy],	[TR],	[TE],	[TI],	[Flip], 	[Image])");
         
         // create a new renderer factory for drawing the visual items
         vis.setRendererFactory(new RendererFactory() {
@@ -190,12 +274,16 @@ public class XNATScatterPlot extends JPanel {
         
         // add the x-axis
         AxisLayout xaxis = new AxisLayout(my_group, xdata, Constants.X_AXIS, VisiblePredicate.TRUE);
+        
+        RangeQueryBinding xRange = new RangeQueryBinding(vt, xdata);
+        AndPredicate xFilter = new AndPredicate(xRange.getPredicate());
+        xaxis.setRangeModel(xRange.getModel());
 
         // ensure the axis spans the width of the data container
         xaxis.setLayoutBounds(g_dataB);
 
         // add the labels to the x-axis
-        AxisLabelLayout xlabels = new AxisLabelLayout("xlab", xaxis, g_xlabB, 15);
+        AxisLabelLayout xlabels = new AxisLabelLayout("xlab", xaxis, g_xlabB);
 
         /*
          * Step 3: Add the Y-Axis and its dynamic query feature
@@ -209,26 +297,22 @@ public class XNATScatterPlot extends JPanel {
 
         // set the range controls on the y-axis
         yaxis.setRangeModel(populationQ.getModel());
-        populationQ.getNumberModel().setValueRange(0, 11000, 0, 11000);
 
         // ensure the y-axis spans the height of the data container
         yaxis.setLayoutBounds(g_dataB);
 
         // add the labels to the y-axis
         AxisLabelLayout ylabels = new AxisLabelLayout("ylab", yaxis, g_ylabB);
-        NumberFormat nf = NumberFormat.getIntegerInstance();
-        nf.setMaximumFractionDigits(0);
-        ylabels.setNumberFormat(nf);
 
         /* 
          * Step 4: Add the search box
          */
 
         // dynamic query based on search criteria specified
-        SearchQueryBinding searchQ = new SearchQueryBinding(vt, "Project");
+        SearchQueryBinding searchQ = new SearchQueryBinding(vt, Columns.PROJECT);
         filter.add(searchQ.getPredicate());		// reuse the same filter as the population query
         
-        SearchQueryBinding searchQ1 = new SearchQueryBinding(vt, "Subject");
+        SearchQueryBinding searchQ1 = new SearchQueryBinding(vt, Columns.SUBJECT);
         filter.add(searchQ1.getPredicate());		// reuse the same filter as the population query
        
         /*
@@ -302,6 +386,8 @@ public class XNATScatterPlot extends JPanel {
         // the user adjusts the axis parameters, or enters a name for filtering), the 
         // visualization is updated
         filter.addExpressionListener(lstnr);
+        xFilter.addExpressionListener(lstnr);
+        
      // fisheye distortion based on the current anchor location
         ActionList distort = new ActionList();
         double m_scale = 7;  
@@ -342,21 +428,24 @@ public class XNATScatterPlot extends JPanel {
 
         // title label (top left)
         JFastLabel g_details = new JFastLabel("XNAT data viz");
-        g_details.setPreferredSize(new Dimension(350, 20));
+        g_details.setPreferredSize(new Dimension(300, 20));
         g_details.setVerticalAlignment(SwingConstants.BOTTOM);
 
         // total label (top right)
-        g_total.setPreferredSize(new Dimension(350, 20));
+        g_total.setPreferredSize(new Dimension(450, 20));
         g_total.setHorizontalAlignment(SwingConstants.RIGHT);
         g_total.setVerticalAlignment(SwingConstants.BOTTOM);
 
         // tool tips
-        ToolTipControl ttc = new ToolTipControl("label");
+//        ToolTipControl ttc = new ToolTipControl("label");
+        HTMLToolTipControl ttc = createToolTipControl();//new TableToolTipControl(Columns.PROJECT);
         Control hoverc = new ControlAdapter() {
 
             public void itemEntered(VisualItem item, MouseEvent evt) {
                 if (item.isInGroup(my_group)) {
-                    g_total.setText(item.getString("label"));
+                    String scanPath = item.getString(Columns.PROJECT) + " > " + item.getString(Columns.SUBJECT) +
+                        " > " + item.getString(Columns.SESSION) + " > " + item.getString(Columns.SCAN);
+                    g_total.setText(scanPath);
                     item.setFillColor(item.getStrokeColor());
                     item.setStrokeColor(ColorLib.rgb(0, 0, 0));
                     item.getVisualization().repaint();
@@ -376,23 +465,32 @@ public class XNATScatterPlot extends JPanel {
         g_display.addControlListener(hoverc); 
         
 
+        MouseAdapter sliderAdapter = new MouseAdapter() {
+
+           public void mousePressed(MouseEvent e) {
+               g_display.setHighQuality(false);
+           }
+
+           public void mouseReleased(MouseEvent e) {
+               g_display.setHighQuality(true);
+               g_display.repaint();
+           }
+       };
         // vertical slider for adjusting the population filter (Yaxis display filter on slider)
         JRangeSlider slider = populationQ.createVerticalRangeSlider();
         slider.setThumbColor(null);
         slider.setToolTipText("drag the arrows to filter the data");
         // smallest window: 200,000
         slider.setMinExtent(100);
-        slider.addMouseListener(new MouseAdapter() {
-
-            public void mousePressed(MouseEvent e) {
-                g_display.setHighQuality(false);
-            }
-
-            public void mouseReleased(MouseEvent e) {
-                g_display.setHighQuality(true);
-                g_display.repaint();
-            }
-        });
+        slider.addMouseListener(sliderAdapter);
+        
+        // horizontal slide
+        JRangeSlider xSlider = xRange.createHorizontalRangeSlider();
+        xSlider.setThumbColor(null);
+        xSlider.setToolTipText("Drag to adjust the visible range.");
+        xSlider.setMinExtent(100);
+        xSlider.addMouseListener(sliderAdapter);
+        
 
         //search box
         JSearchPanel searcher = searchQ.createSearchPanel();
@@ -424,20 +522,25 @@ public class XNATScatterPlot extends JPanel {
         topContainer.add(Box.createHorizontalStrut(5));
 
         // container for elements at the bottom of the screen
-        Box bottomContainer = new Box(BoxLayout.X_AXIS);
-        bottomContainer.add(Box.createHorizontalStrut(5));
-        bottomContainer.add(searcher);
-        bottomContainer.add(searcher1);
-        bottomContainer.add(Box.createHorizontalGlue());
-        bottomContainer.add(Box.createHorizontalStrut(5));
-        bottomContainer.add(Box.createHorizontalStrut(16));
+        Box searchContainer = new Box(BoxLayout.X_AXIS);
+        searchContainer.add(Box.createHorizontalStrut(5));
+        searchContainer.add(searcher);
+        searchContainer.add(searcher1);
+        searchContainer.add(Box.createHorizontalGlue());
+        searchContainer.add(Box.createHorizontalStrut(5));
+        searchContainer.add(Box.createHorizontalStrut(16));
+        
+        Box bottomContainer = new Box(BoxLayout.Y_AXIS);
+        bottomContainer.add(xSlider);
+        bottomContainer.add(Box.createVerticalStrut(5));
+        bottomContainer.add(searchContainer);
 
         // fonts, colours, etc.
         UILib.setColor(this, ColorLib.getColor(255, 255, 255), Color.GRAY);
         slider.setForeground(Color.LIGHT_GRAY);
         UILib.setFont(bottomContainer, FontLib.getFont("Tahoma", 15));
         g_details.setFont(FontLib.getFont("Tahoma", 18));
-        g_total.setFont(FontLib.getFont("Tahoma", 16));
+        g_total.setFont(FontLib.getFont("Tahoma", Font.BOLD, 12));
 
         // add the containers to the JPanel
         add(topContainer, BorderLayout.NORTH);

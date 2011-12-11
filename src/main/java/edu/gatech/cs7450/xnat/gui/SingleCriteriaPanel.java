@@ -1,19 +1,32 @@
 package edu.gatech.cs7450.xnat.gui;
 
+import static java.util.Arrays.asList;
+
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+import org.jdesktop.swingx.autocomplete.AutoCompleteDecorator;
+
+import edu.gatech.cs7450.xnat.SearchField;
 import edu.gatech.cs7450.xnat.SingleCriteria;
 import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
+import edu.gatech.cs7450.xnat.XNATConstants.Projects;
+import edu.gatech.cs7450.xnat.XNATConstants.Scans;
+import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
+import edu.gatech.cs7450.xnat.XNATConstants.Subjects;
 
 public class SingleCriteriaPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -27,20 +40,19 @@ public class SingleCriteriaPanel extends JPanel {
 	 */
 	public SingleCriteriaPanel() {
 		setAlignmentY(Component.TOP_ALIGNMENT);
-		setPreferredSize(new Dimension(300, 24));
+		setPreferredSize(new Dimension(500, 27));
 		setMaximumSize(new Dimension(32767, 48));
 		setMinimumSize(new Dimension(300, 12));
 		GridBagLayout gridBagLayout = new GridBagLayout();
 		gridBagLayout.columnWidths = new int[]{0, 0, 0};
 		gridBagLayout.rowHeights = new int[]{0};
-		gridBagLayout.columnWeights = new double[]{0.0, 0.0, 1.0};
-		gridBagLayout.rowWeights = new double[]{0.0, 0.0};
+		gridBagLayout.columnWeights = new double[]{1.0, 0.0, 1.0};
+		gridBagLayout.rowWeights = new double[]{0.0};
 		setLayout(gridBagLayout);
 		
 		txtFieldValue = new JTextField();
 		GridBagConstraints gbc_txtFieldValue = new GridBagConstraints();
-		gbc_txtFieldValue.fill = GridBagConstraints.VERTICAL;
-		gbc_txtFieldValue.anchor = GridBagConstraints.WEST;
+		gbc_txtFieldValue.fill = GridBagConstraints.BOTH;
 		gbc_txtFieldValue.insets = new Insets(0, 0, 0, 5);
 		gbc_txtFieldValue.gridx = 2;
 		gbc_txtFieldValue.gridy = 0;
@@ -72,8 +84,7 @@ public class SingleCriteriaPanel extends JPanel {
 		
 		txtSchemeField = new JTextField();
 		GridBagConstraints gbc_txtSchemeField = new GridBagConstraints();
-		gbc_txtSchemeField.fill = GridBagConstraints.VERTICAL;
-		gbc_txtSchemeField.anchor = GridBagConstraints.EAST;
+		gbc_txtSchemeField.fill = GridBagConstraints.BOTH;
 		gbc_txtSchemeField.insets = new Insets(0, 0, 0, 5);
 		gbc_txtSchemeField.gridx = 0;
 		gbc_txtSchemeField.gridy = 0;
@@ -86,6 +97,8 @@ public class SingleCriteriaPanel extends JPanel {
 		txtSchemeField.setPreferredSize(new Dimension(100, 24));
 		txtSchemeField.setMinimumSize(new Dimension(100, 14));
 		txtSchemeField.setColumns(10);
+		
+		_init();
 	}
 	
 	public JTextField getSchemeField() {
@@ -100,7 +113,25 @@ public class SingleCriteriaPanel extends JPanel {
 		return cmbOperator;
 	}
 
-
+	private void _init() {
+		ArrayList<String>	fields = new ArrayList<String>();
+		
+		// reflect the SearchField constants
+		for( Class<?> c : Arrays.<Class<?>>asList(Projects.class, Subjects.class, Sessions.class, Scans.class)) {
+			for( Field f : c.getDeclaredFields() ) {
+				if( 0 != (f.getModifiers() & Modifier.STATIC) && SearchField.class.isAssignableFrom(f.getType()) ) {
+					try {
+						SearchField searchField = (SearchField)f.get(null);
+						fields.add(searchField.getSummary());
+					} catch( IllegalAccessException e ) {
+						System.err.println("Couldn't access field: " + f.getName());
+					}
+				}
+			}
+		}
+		
+		AutoCompleteDecorator.decorate(txtSchemeField, fields, false);
+	}
 
 	/**
 	 * Copies the values into a single criteria.
@@ -111,7 +142,7 @@ public class SingleCriteriaPanel extends JPanel {
 	 */
 	public SingleCriteria toSingleCriteria(SingleCriteria criteria) {
 		SingleCriteria c = criteria != null ? criteria : new SingleCriteria();
-		c.setSchemeField(txtSchemeField.getText());
+		c.setSchemeField(txtSchemeField.getText().trim()); // trim because spaces will fail the search
 		c.setValue(txtFieldValue.getText());
 		c.setOperator((CompareOperator)cmbOperator.getSelectedItem());
 		return c;

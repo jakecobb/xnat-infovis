@@ -43,7 +43,7 @@ import edu.gatech.cs7450.xnat.SearchCriteria;
 import edu.gatech.cs7450.xnat.SearchWhere;
 import edu.gatech.cs7450.xnat.SingleCriteria;
 
-public class SearchPanel extends JPanel {
+public class SearchTreePanel extends JPanel {
 	private static final long serialVersionUID = 1L;
 	
 	private JTree treeCriteria;
@@ -54,7 +54,7 @@ public class SearchPanel extends JPanel {
 	/**
 	 * Create the panel.
 	 */
-	public SearchPanel() {
+	public SearchTreePanel() {
 		setPreferredSize(new Dimension(400, 300));
 		setLayout(new GridLayout(0, 1, 0, 0));
 		
@@ -371,6 +371,9 @@ public class SearchPanel extends JPanel {
 		treeCriteria.setCellEditor(new DefaultTreeCellEditor(treeCriteria, 
 			(DefaultTreeCellRenderer)treeCriteria.getCellRenderer(), 
 			new SearchTreeCellEditor()));
+		
+		// make sure focus loss causes a save
+		treeCriteria.setInvokesStopCellEditing(true);
 	}
 
 	private static class SearchTreeNode extends DefaultMutableTreeNode {
@@ -420,7 +423,7 @@ public class SearchPanel extends JPanel {
 //			e.printStackTrace();
 //		}
 		
-		final SearchPanel view = new SearchPanel();
+		final SearchTreePanel view = new SearchTreePanel();
 		JFrame frame = new JFrame("blah");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().add(view);

@@ -6,8 +6,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -40,6 +43,11 @@ public class XNATResultSet extends XNATTableResult {
 	/** Logging. */
 	private static final Logger _log = Logger.getLogger(XNATResultSet.class);
 	
+	/** Match bad entities (e.g. unescaped '&') in input XML, used by <code>wrapStringData(String)</code>. */
+	private static final Pattern badEntities = Pattern.compile("&(#\\d{1,4}|\\w+)([^;]|$)", Pattern.CASE_INSENSITIVE);
+	/** Replacement for bad entities, used by <code>wrapStringData(String)</code>. */
+	private static final String BAD_ENT_REPLACEMENT = "&amp;$1$2";
+	
 	/** Expected attribute names for search field columns. */
 	@SuppressWarnings("unused")
 	private static class ColAttrs {
@@ -64,15 +72,58 @@ public class XNATResultSet extends XNATTableResult {
 	
 	/** Maps header search fields to the value position. */
 	private Map<SearchField, Integer> headerFieldPosition;
+	
+	/** Search fields required in the response. */
+	private Set<SearchField> requiredHeaderFields = Collections.emptySet();
+	
+	/** Required search field values for rows. */
+	private Set<SearchField> requiredFieldValues = Collections.emptySet();
 
+	public XNATResultSet(String xmlData, Collection<SearchField> requiredHeaders, Collection<SearchField> requiredValues) 
+			throws IOException {
+		if( xmlData == null ) throw new NullPointerException("xmlData is null");
+		
+		if( requiredHeaders != null )
+			this.requiredHeaderFields = new HashSet<SearchField>(requiredHeaders);
+		if( requiredValues != null )
+			this.requiredFieldValues = new HashSet<SearchField>(requiredValues);
+		
+		this.parseData(wrapStringData(xmlData));
+	}
+	
 	public XNATResultSet(String xmlData) throws IOException {
 		if( xmlData == null ) throw new NullPointerException("xmlData is null");
 		this.parseData(wrapStringData(xmlData));
-		this.mapHeaders();
 	}
 
 	public XNATResultSet(InputStream in) throws IOException {
-		super(in);
+		if( in == null ) throw new NullPointerException("in is null");
+		this.parseData(in);
+	}
+	
+	public XNATResultSet(InputStream in, Collection<SearchField> requiredHeaders, Collection<SearchField> requiredValues) 
+			throws IOException {
+		if( in == null ) throw new NullPointerException("in is null");
+		
+		if( requiredHeaders != null )
+			this.requiredHeaderFields = new HashSet<SearchField>(requiredHeaders);
+		if( requiredValues != null )
+			this.requiredFieldValues = new HashSet<SearchField>(requiredValues);
+		
+		this.parseData(in);
+	}
+	
+	/** 
+	 * {@inheritDoc}
+	 * Extends super to fix bad entity sequences. 
+	 */
+	@Override
+	protected InputStream wrapStringData(String data) {
+		// guard against malformed (unescaped) XML in the xNAT response
+		data = badEntities.matcher(data).replaceAll(BAD_ENT_REPLACEMENT);
+		
+		// now wrap as usual
+		return super.wrapStringData(data);
 	}
 	
 	/** 
@@ -90,6 +141,20 @@ public class XNATResultSet extends XNATTableResult {
 			if( field != null )
 				headerFieldPosition.put(field, i);
 		}
+	}
+	
+	/**
+	 * {@inheritDoc}
+	 * Extends super to check required search fields.
+	 */
+	@Override
+	protected void checkRequiredHeaders() throws XNATException {
+		super.checkRequiredHeaders();
+		
+		HashSet<SearchField> required = new HashSet<SearchField>(requiredHeaderFields);
+		required.removeAll(headerFieldPosition.keySet());
+		if( required.size() > 0 )
+			throw new XNATException("Missing required search fields: " + required);
 	}
 	
 	@Override
@@ -159,17 +224,31 @@ public class XNATResultSet extends XNATTableResult {
 			headerFields.trimToSize();
 			this.headerFields = headerFields;
 			
+			afterHeaders(); // check and map headers
+			
 			// read data values
 			ArrayList<XNATResultSetRow> rows = new ArrayList<XNATResultSetRow>();
 			NodeList rowNodes = root.getElementsByTagName("row");
-			for( int i = 0, ilen = rowNodes.getLength(); i < ilen; ++i ) {
+			readLoop: for( int i = 0, ilen = rowNodes.getLength(); i < ilen; ++i ) {
 				Element rowEl = (Element)rowNodes.item(i);
 				NodeList cells = rowEl.getElementsByTagName("cell");
 				
 				String[] values = new String[cells.getLength()];
 				for( int j = 0, jlen = cells.getLength(); j < jlen; ++j ) {
-					values[j] = cells.item(j).getTextContent();
+					String value = cells.item(j).getTextContent();
+					
+					// filter if missing a required field
+					if( value == null || "".equals(value.trim()) ) {
+						if( this.headerFields.get(j) != null && requiredFieldValues.contains(headerFields.get(j)) ) {
+							_log.warn("Missing value for field: " + headerFields.get(j));
+							++filteredRows;
+							continue readLoop;
+						}
+					}
+					
+					values[j] = value;
 				}
+				
 				rows.add(new XNATResultSetRow(values));
 			}
 			rows.trimToSize();

@@ -19,6 +19,7 @@ public class XNATDefaults {
 	
 	/** The default scan fields we are supporting. */
 	public static final List<SearchField> DEFAULT_SCAN_FIELDS = unmodifiableList(asList(
+		Scans.ID,
 		Scans.TYPE,
 		Scans.COIL,
 		Scans.QUALITY,
@@ -26,7 +27,6 @@ public class XNATDefaults {
 		Scans.FRAMES,
 		Scans.FIELDSTRENGTH,
 		Scans.PARAMETERS_IMAGETYPE,
-		Scans.PARAMETERS_FLIP,
 		Scans.PARAMETERS_FOV_X,
 		Scans.PARAMETERS_FOV_Y,
 		Scans.PARAMETERS_TE,
@@ -49,6 +49,32 @@ public class XNATDefaults {
 		searchFields.trimToSize();
 		DEFAULT_SEARCH_FIELDS = unmodifiableList(searchFields);
 	}
+	
+	/** Nominal fields to use for e.g. the scatterplot. */
+	public static final List<SearchField> DEFAULT_NOMINAL_FIELDS = unmodifiableList(asList(
+		Sessions.PROJECT,
+		Sessions.SUBJECT_ID,
+		Sessions.SESSION_ID,
+		Scans.TYPE,
+		Scans.COIL,
+		Scans.QUALITY,
+		Scans.PARAMETERS_IMAGETYPE,
+		Scans.FIELDSTRENGTH // tends to be numeric, but schema type is string
+	));
+	
+	/** Numeric / quantitative fields for e.g. the scatterplot. */
+	public static final List<SearchField> DEFAULT_QUANT_FIELDS = unmodifiableList(asList(
+		Scans.PARAMETERS_TE,
+		Scans.PARAMETERS_TI,
+		Scans.PARAMETERS_TR,
+		Scans.PARAMETERS_FOV_X,
+		Scans.PARAMETERS_FOV_Y,
+		Scans.PARAMETERS_VOXELRES_X,
+		Scans.PARAMETERS_VOXELRES_Y,
+		Scans.PARAMETERS_VOXELRES_Z,
+		Scans.PARAMETERS_FLIP,
+		Scans.FRAMES
+	));
 	
 	private XNATDefaults() { }
 }

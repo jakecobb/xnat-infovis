@@ -2,10 +2,28 @@ package edu.gatech.cs7450.prefuse;
 /**
  * The Size of the scan group has been fixed and the colors have been fixed
  */
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.event.ActionEvent;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Stack;
 
+import javax.swing.AbstractAction;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+
+import org.apache.log4j.Logger;
 
 import prefuse.Constants;
 import prefuse.Display;
@@ -15,14 +33,23 @@ import prefuse.action.ActionList;
 import prefuse.action.RepaintAction;
 import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.DataColorAction;
+import prefuse.action.assignment.StrokeAction;
 import prefuse.action.layout.graph.ForceDirectedLayout;
 import prefuse.activity.Activity;
+import prefuse.controls.ControlAdapter;
 import prefuse.controls.DragControl;
+import prefuse.controls.FocusControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.ZoomControl;
 import prefuse.data.Graph;
+import prefuse.data.Node;
+import prefuse.data.Table;
+import prefuse.data.column.Column;
+import prefuse.data.event.ColumnListener;
 import prefuse.data.io.DataIOException;
 import prefuse.data.io.GraphMLReader;
+import prefuse.data.tuple.TableTuple;
+import prefuse.data.tuple.TupleSet;
 import prefuse.render.DefaultRendererFactory;
 import prefuse.render.LabelRenderer;
 import prefuse.render.RendererFactory;
@@ -35,14 +62,22 @@ import prefuse.util.force.SpringForce;
 import prefuse.visual.EdgeItem;
 import prefuse.visual.NodeItem;
 import prefuse.visual.VisualItem;
+import edu.gatech.cs7450.Pair;
+import edu.gatech.cs7450.prefuse.controls.HTMLToolTipControl;
 
 public class ScanGroupView extends JPanel {
 	private static final long serialVersionUID = 1L;
+	private static final Logger _log = Logger.getLogger(ScanGroupView.class);
 	
 	protected Graph graph;
 	protected Visualization vis;
 	protected Display display;
 	protected String m_edgeGroup;
+	
+	/** Tracks Node objects by scan group / subject id. */
+	private NodeTracker nodeTracker;
+	
+	private Stack<String> unusedColors = new Stack<String>();
 	
 	public ScanGroupView(String xmlPath) throws DataIOException {
 		graph =  new GraphMLReader().readGraph(xmlPath);
@@ -57,7 +92,17 @@ public class ScanGroupView extends JPanel {
 		createVisualization();
 	}
 	
+	public Node getNodeForScanGroup(String id) {
+		return nodeTracker.getNodeForScanGroup(id);
+	}
+	
+	public Graph getGraph() {
+		return graph;
+	}
+	
 	protected void createVisualization() {
+		nodeTracker = new NodeTracker();
+		
 		vis = new Visualization();
 		vis.add("graph", graph);
 		vis.setInteractive("graph.nodes", null, true); // allow node interaction
@@ -70,20 +115,149 @@ public class ScanGroupView extends JPanel {
 		setupDisplay();
 	}
 	
+	@SuppressWarnings("serial")
 	protected void setupDisplay() {
+		Dimension minSize = new Dimension(720, 500);
 		display = new Display(vis);
-		display.setSize(720, 500);
-		display.addControlListener(new DragControl());
+		display.setSize(minSize);
+		display.setMinimumSize(minSize);
+		
+		this.setFocusable(false);
+		if( _log.isTraceEnabled() ) {
+			display.addFocusListener(new FocusListener() {
+				public void focusLost(FocusEvent e) {
+					_log.trace("display.focusLost: " + e);
+				}
+				public void focusGained(FocusEvent e) {
+					_log.trace("display.focusGained: " + e);
+				}
+			});
+		}
+		
+		// tooltips
+		HTMLToolTipControl toolTipControl = new HTMLToolTipControl("scanGroup", "type");
+		toolTipControl.setShowLabel(true);
+		toolTipControl.setLabelOverrides("<b>ID:</b> ", "<b>Type:</b> ");
+		display.addControlListener(toolTipControl);
+		
+		// double-click to toggle fixed position
+		display.addControlListener(new ControlAdapter() {
+			@Override
+			public void itemClicked(VisualItem item, MouseEvent e) {
+				if( SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2 ) {
+					if( _log.isDebugEnabled() ) {
+						_log.debug("toggle.itemClicked: " + e);
+						_log.debug("item.isFixed: " + item.isFixed());
+					}
+					item.setFixed(!item.isFixed());
+				}
+			}
+		});
+
+		display.getInputMap().put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0,true), "DEL released");
+		display.getActionMap().put("DEL released", new AbstractAction() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if( _log.isDebugEnabled() ) _log.debug("delete.actionPerformed: " + e);
+				
+				// stop rendering while we process
+				pause();
+				
+				try {
+					// gather nodes to delete
+					ArrayList<Pair<VisualItem, Node>> toRemove = new ArrayList<Pair<VisualItem, Node>>();
+					for( @SuppressWarnings("unchecked") Iterator<VisualItem> iter = vis.items(Visualization.FOCUS_ITEMS); iter.hasNext(); ) {
+						VisualItem item = iter.next();
+						if( item instanceof NodeItem )
+							toRemove.add(Pair.make(item, (Node)item.getSourceTuple()));
+					}
+					
+					if( toRemove.size() == 0 )
+						return;
+					
+					// make sure
+					int choice = JOptionPane.showConfirmDialog(display, "Really delete " + toRemove.size() + " nodes?", 
+						"Confirm Delete", JOptionPane.YES_NO_OPTION);
+					if( choice != JOptionPane.YES_OPTION )
+						return;
+					
+					// delete the nodes, tracking freed scan group colors
+					LinkedHashSet<String> returnColors = new LinkedHashSet<String>();
+					TupleSet focusGroup = vis.getGroup(Visualization.FOCUS_ITEMS);
+					for( Pair<VisualItem, Node> pair : toRemove ) {
+						VisualItem focusItem = pair.getFirst();
+						Node node = pair.getSecond();
+						
+						// remove the node
+						if( "scan".equals(node.getString("type")) )
+							returnColors.add(node.getString("color"));
+						graph.removeTuple(node);
+						
+						// and the visual item from the focus group
+						focusGroup.removeTuple(focusItem);
+					}
+					
+					// return the colors to the available pool
+					for( String color : returnColors )
+						returnColor(color);
+					
+				} finally {
+					begin(); // resume rendering
+				}
+			}
+		});
+		
+		display.addControlListener(new DragControl(false, false) {
+			@Override
+			public void itemReleased(VisualItem item, MouseEvent e) {
+				if( !SwingUtilities.isLeftMouseButton(e) ) return;
+				
+				// super doesn't remove the fixed setting unless it was dragged, causing it to become stuck
+				// FIXME: reflection to nullify activeItem if needed
+//            activeItem = null;
+            item.getTable().removeTableListener(this);
+            if ( resetItem ) item.setFixed(wasFixed);
+            dragged = false;
+			}
+		});
 		display.addControlListener(new PanControl());
 		display.addControlListener(new ZoomControl());
-		this.setSize(720, 500);
-		this.add(display);
+		display.addControlListener(new FocusControl(1, "color"));
+		display.addControlListener(new ControlAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if( _log.isDebugEnabled() ) _log.debug("focusControl.mouseClicked: " + e);
+				display.requestFocusInWindow();
+			}
+			@Override
+			public void itemClicked(VisualItem item, MouseEvent e) {
+				if( _log.isDebugEnabled() ) _log.debug("focusControl.itemClicked: " + e);
+				display.requestFocusInWindow();
+			}
+		});
+		
+		// make the display fill the available space
+		BorderLayout layout = new BorderLayout();
+		this.setLayout(layout);
+		this.add(display, BorderLayout.CENTER);
 	}
 	
 	public void begin() {
 		vis.run("color");
 		vis.run("layout");
-		
+	}
+	
+	public void pause() {
+		vis.cancel("color");
+		vis.cancel("layout");
+	}
+	
+	public Visualization getVisualization() {
+		return vis;
+	}
+	
+	public Display getDisplay() {
+		return display;
 	}
 	
 	private static final float 
@@ -170,7 +344,9 @@ public class ScanGroupView extends JPanel {
 		for( int i = 0; i < NUM_COLORS; ++i ) {
 			colorLabels.add("color" + i);
 		}
+		HashSet<String> availableColors = new LinkedHashSet<String>(colorLabels); // colors not already used by a scan group
 		colorLabels.add("subjectColor");
+		
 		DataColorAction fill = new DataColorAction("graph.nodes", "color", Constants.NOMINAL, VisualItem.FILLCOLOR, pallete);
 		fill.setOrdinalMap(colorLabels.toArray());
 		
@@ -179,6 +355,7 @@ public class ScanGroupView extends JPanel {
 		
 		DataColorAction edgeColors = new DataColorAction("graph.edges", "color", Constants.NOMINAL, VisualItem.STROKECOLOR, pallete);
 		edgeColors.setOrdinalMap(colorLabels.toArray());
+		
 		
 		// set subject nodes to the single subject color
 		for( Iterator<?> nodeIter = vis.visibleItems("graph.nodes"); nodeIter.hasNext(); ) {
@@ -189,34 +366,94 @@ public class ScanGroupView extends JPanel {
 		
 		// Coloring the edges
 		m_edgeGroup = PrefuseLib.getGroupName("graph", Graph.EDGES);
-		 if ( m_edgeGroup != null ) {
-	           Iterator iter = vis.visibleItems(m_edgeGroup);
-	            while ( iter.hasNext() ) {
-	            	
-	                EdgeItem e  = (EdgeItem)iter.next();
-	                NodeItem srcNode = e.getSourceItem();
-	                NodeItem targetNode = e.getTargetItem();
-	                
-	                // determine which is the scan group
-	                NodeItem scanNode;
-	                if( "scan".equalsIgnoreCase(srcNode.getString("type")) ) {
-	               	 scanNode = srcNode;
-	                } else if ( "scan".equalsIgnoreCase(targetNode.getString("type")) ) {
-	               	 scanNode = targetNode;
-	                } else {
-	               	 throw new RuntimeException("FIXME: Neither is a scan node?");
-	                }
-	                
-	                // transfer scan group color to the edge
-	                e.setString("color", scanNode.getString("color"));
-	              }
-	        }
+		if( m_edgeGroup != null ) {
+			Iterator<?> iter = vis.visibleItems(m_edgeGroup);
+			while( iter.hasNext() ) {
+
+				EdgeItem e = (EdgeItem)iter.next();
+				NodeItem srcNode = e.getSourceItem();
+				NodeItem targetNode = e.getTargetItem();
+
+				// determine which is the scan group
+				NodeItem scanNode;
+				if( "scan".equalsIgnoreCase(srcNode.getString("type")) ) {
+					scanNode = srcNode;
+				} else if( "scan".equalsIgnoreCase(targetNode.getString("type")) ) {
+					scanNode = targetNode;
+				} else {
+					throw new RuntimeException("FIXME: Neither is a scan node?");
+				}
+
+				// transfer scan group color to the edge
+				String color = scanNode.getString("color");
+				availableColors.remove(color); // color is in use
+				e.setString("color", color);
+			}
+		}
+		
+		unusedColors.addAll(availableColors);
+		
+		ColorAction focusBorder = new ColorAction("graph.nodes", VisualItem.STROKECOLOR) {
+			@Override
+			public int getColor(VisualItem item) {
+				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
+					return ColorLib.gray(0);
+				return item.getFillColor();
+			}
+		};
+		StrokeAction focusStroke = new StrokeAction("graph.nodes") {
+			private BasicStroke focusStroke = new BasicStroke(3.0f);
+			@Override
+			public BasicStroke getStroke(VisualItem item) {
+				if( item.isInGroup(Visualization.FOCUS_ITEMS) )
+					return focusStroke;
+				return defaultStroke;
+					
+			}
+		};
 		
 		ActionList color = new ActionList();
+		color.add(focusBorder);
+		color.add(focusStroke);
 		color.add(fill);
 		color.add(text);
 		color.add(edgeColors);
 		return color;
+	}
+	
+	/**
+	 * Returns whether an unused scan group color is available.
+	 * @return if a color is available
+	 */
+	public boolean isColorAvailable() {
+		return !unusedColors.isEmpty();
+	}
+	
+	/**
+	 * Returns an unused scan group color.
+	 * <p>
+	 * The color returned is not available again until returned.  Call 
+	 * <code>returnColor(String)</code> to make it available again.
+	 * </p>
+	 * 
+	 * @return the color label, or <code>null</code> if no colors are available
+	 */
+	public String reserveColor() {
+		if( !unusedColors.isEmpty() )
+			return unusedColors.pop();
+		return null;
+	}
+	
+	/**
+	 * Makes a color label available again for new scan groups.
+	 * @param color the color to return
+	 */
+	public void returnColor(String color) {
+		if( color == null ) throw new NullPointerException("color is null");
+		if( !color.matches("color[0-9]+") )
+			_log.warn("Unexpected color label: " + color);
+
+		unusedColors.push(color);
 	}
 	
 	public int getColor(VisualItem item , ColorAction c){
@@ -231,21 +468,78 @@ public class ScanGroupView extends JPanel {
 		
 	}
 	
-	/*
-	public Color createRandomColors(int i){
-
-        for (int j = 0; j < i; j++){
-        	int R = (int) (Math.random( )*256);
-    		int G = (int)(Math.random( )*256);
-    		int B= (int)(Math.random( )*256);
-    		
-    		Color randomColor = new Color(R, G, B);
-    		
-    		return randomColor;
-	
-        }
-				
+	/**
+	 * Track nodes by "scanGroup" value, which is subject-id for subjects and the 
+	 * group name for scan groups.
+	 */
+	private class NodeTracker implements ColumnListener {
+		private HashMap<String, Node> scanGroupToNode = new HashMap<String, Node>();
 		
+		private NodeTracker() {
+			// initialize current mapping
+			for( Iterator<?> iter = graph.getNodes().tuples(); iter.hasNext(); ) {
+				TableTuple tuple = (TableTuple)iter.next();
+				Node node = graph.getNode(tuple.getRow());
+				scanGroupToNode.put(node.getString("scanGroup"), node);
+			}
+			
+			// monitor future changes
+			Table nodeTable = graph.getNodeTable();
+			Column sgCol = nodeTable.getColumn("scanGroup");
+			sgCol.addColumnListener(this);
+		}
+		
+		public Node getNodeForScanGroup(String id) {
+			if( id == null ) throw new NullPointerException("id is null");
+			return scanGroupToNode.get(id);
+		}
+
+
+		@Override
+		public void columnChanged(Column src, int idx, Object prev) {
+			if( _log.isDebugEnabled() )
+				_log.debug("src=" + src + ", idx=" + idx + ", prev=" + prev);
+			
+			// prev == null -> newly added row
+			if( prev != null )
+				scanGroupToNode.remove(prev);
+			
+			String newId = src.getString(idx);
+			
+			// newId == null -> removed row
+			if( newId != null )
+				scanGroupToNode.put(newId, graph.getNode(idx));
+		}
+
+		@Override
+		public void columnChanged(Column src, int type, int start, int end) {
+			_log.error("src=" + src + ", type=" + type + ", start=" + start + ", end=" + end);
+			throw new UnsupportedOperationException("FIXME: Not implemented.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, int prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, long prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, float prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, double prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");			
+		}
+
+		@Override
+		public void columnChanged(Column src, int idx, boolean prev) {
+			throw new UnsupportedOperationException("Expecting strings only.");			
+		}
 	}
-	*/
 }

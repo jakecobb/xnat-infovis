@@ -1,9 +1,13 @@
 package edu.gatech.cs7450;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -98,6 +102,42 @@ public class Util {
 		for( byte b : bytes )
 			f.format(format, b);
 		return f.toString();
+	}
+	
+	/**
+	 * Serializes an object and returns the serialized bytes.
+	 * 
+	 * @param object the object to serialize
+	 * @return the serialized bytes
+	 * @throws IOException if the object cannot be serialized
+	 * @throws NullPointerException if <code>object</code> is <code>null</code>
+	 */
+	public static byte[] serialize(Serializable object) throws IOException {
+		if( object == null ) throw new NullPointerException("object is null");
+		
+		ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+		ObjectOutputStream objOut = new ObjectOutputStream(byteOut);
+		objOut.writeObject(object);
+		objOut.close();
+		
+		return byteOut.toByteArray();
+	}
+	
+	/**
+	 * Deserializes an object from the serialized data.
+	 * 
+	 * @param serialized the serialized data
+	 * @return the object
+	 * @throws IOException if an object cannot be deserialized from <code>serialized</code>
+	 * @throws ClassNotFoundException if the class of the serialized object can't be found
+	 */
+	public static Object deserialize(byte[] serialized) throws IOException, ClassNotFoundException {
+		if( serialized == null ) throw new NullPointerException("serialized is null");
+		
+		ByteArrayInputStream byteIn = new ByteArrayInputStream(serialized);
+		ObjectInputStream objIn = new ObjectInputStream(byteIn);
+		
+		return objIn.readObject();
 	}
 
 	/**
