@@ -15,6 +15,7 @@ import org.apache.log4j.Logger;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+import org.apache.velocity.app.event.implement.EscapeXmlReference;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.exception.VelocityException;
@@ -26,6 +27,7 @@ import com.sun.jersey.api.client.UniformInterfaceException;
 import com.sun.jersey.api.client.WebResource;
 
 import edu.gatech.cs7450.Util;
+import edu.gatech.cs7450.xnat.XNATConstants.Subjects;
 
 /** xNAT search engine interface. */
 public class XNATSearch {
@@ -47,6 +49,11 @@ public class XNATSearch {
 			Properties p = new Properties();
 			p.setProperty("resource.loader", "string");
 			p.setProperty("string.resource.loader.class", StringResourceLoader.class.getName());
+			
+			// make sure we escape XML in user input and compare operator values
+			p.setProperty("eventhandler.referenceinsertion.class", EscapeXmlReference.class.getName());
+			p.setProperty("eventhandler.escape.xml.match", "/(rootElement|field|criteria).*/");
+			
 			Velocity.init(p);
 			StringResourceLoader.getRepository()
 				.putStringResource("/xnat_search.vel", Util.classString(XNATSearch.class, "/xnat_search.vel"), "UTF-8");
@@ -381,16 +388,30 @@ public class XNATSearch {
 	 * Fetches a set of subjects in table form, optionally for a given project.
 	 * 
 	 * @param projectID the project ID or <code>null</code> to fetch all subjects
+	 * @param extraCols optional extra columns to retrieve
 	 * @return the set of subjects
 	 * @throws XNATException if there is a problem fetching the subjects
 	 * @see XNATConstants.Subjects#COLUMNS
 	 */
-	public XNATTableResult fetchSubjects(String projectID) throws XNATException {
+	public XNATTableResult fetchSubjects(String projectID, String... extraCols) throws XNATException {
 		try {
-			String webPath = "";
+			// standard URL params
+			StringBuilder b = new StringBuilder();
 			if( projectID != null )
-				webPath = "/projects/" + URLEncoder.encode(projectID, "UTF-8");
-			webPath += "/subjects?format=csv";
+				b.append("/projects/").append(URLEncoder.encode(projectID, "UTF-8"));
+			b.append("/subjects?format=csv");
+			
+			// if extra columns, specify the defaults plus the extras
+			if( extraCols != null && extraCols.length > 0 ) {
+				b.append("&columns=");
+				for( String defCol : Subjects.COLUMNS )
+					b.append(URLEncoder.encode(defCol, "UTF-8")).append(',');
+				for( String extraCol : extraCols )
+					b.append(URLEncoder.encode(extraCol, "UTF-8")).append(',');
+				b.setLength(b.length() - 1); // delete last ','
+			}
+			
+			String webPath = b.toString();
 			
 			String resp = connection.resource(webPath).get(String.class);
 			if( _log.isDebugEnabled() ) _log.debug("Subject response:\n" + resp);
