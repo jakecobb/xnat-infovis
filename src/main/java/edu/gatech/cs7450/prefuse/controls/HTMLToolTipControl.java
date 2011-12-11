@@ -81,7 +81,7 @@ public class HTMLToolTipControl extends ControlAdapter {
 					sbuf.append(beforeLabel).append(label).append(afterLabel);
 				}
 				
-				sbuf.append(beforeValue).append(escapeHtml(item.getString(field))).append(afterValue);
+				sbuf.append(beforeValue).append(getFieldValue(item, field)).append(afterValue);
 			}
 		}
 		
@@ -94,6 +94,21 @@ public class HTMLToolTipControl extends ControlAdapter {
 	public void itemExited(VisualItem item, MouseEvent e) {
 		Display disp = (Display)e.getSource();
 		disp.setToolTipText(null);
+	}
+	
+	/**
+	 * Retrieves the value of a field for display.
+	 * <p>
+	 * By default, this is equivalent to <code>escapeHtml(item.getString(field))</code>. 
+	 * Subclasses may override for custom field handling.
+	 * </p>
+	 * 
+	 * @param item  the item to retrieve the value from
+	 * @param field the field to retrieve the value of
+	 * @return
+	 */
+	protected String getFieldValue(VisualItem item, String field) {
+		return escapeHtml(item.getString(field));
 	}
 	
 	/** 

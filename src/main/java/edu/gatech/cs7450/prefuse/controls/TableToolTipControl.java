@@ -12,9 +12,9 @@ public class TableToolTipControl extends HTMLToolTipControl {
 	public TableToolTipControl(String... fields) {
 		super(fields);
 		this.beforeFields = "<table border='0' cellpadding='1' cellspacing='0' width='100%'><tr>";
-		this.beforeLabel = "<td align='right'><b>";
+		this.beforeLabel = "<td align='right' valign='top'><b>";
 		this.afterLabel = "</b></td>";
-		this.beforeValue = "<td align='left'>";
+		this.beforeValue = "<td align='left' valign='top'>";
 		this.afterValue = "</td>";
 		this.fieldSep = "</tr><tr>";
 		this.afterFields = "</tr></table>";

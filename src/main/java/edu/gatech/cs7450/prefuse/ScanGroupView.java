@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Stack;
 
 import javax.swing.AbstractAction;
@@ -69,6 +70,42 @@ import edu.gatech.cs7450.prefuse.controls.TableToolTipControl;
 public class ScanGroupView extends JPanel {
 	private static final long serialVersionUID = 1L;
 	private static final Logger _log = Logger.getLogger(ScanGroupView.class);
+	
+	/**
+	 * Checks if a visual item is for a subject node.
+	 * 
+	 * @param item the visual item to check
+	 * @return if <code>item</code> is for a subject node
+	 */
+	private static final boolean isSubjectItem(VisualItem item) {
+		if( item instanceof NodeItem ) {
+			Node node = (Node)item.getSourceTuple();
+			if( node == null ) {
+				_log.warn("No backing node for: " + item);
+			} else {
+				return "subject".equalsIgnoreCase(node.getString("type"));
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Checks if a visual item is for a scan group node.
+	 * 
+	 * @param item the visual item to check
+	 * @return if <code>item</code> is for a scan group node
+	 */
+	private static final boolean isScanGroupItem(VisualItem item) {
+		if( item instanceof NodeItem ) {
+			Node node = (Node)item.getSourceTuple();
+			if( node == null ) {
+				_log.warn("No backing node for: " + item);
+			} else {
+				return "scan".equalsIgnoreCase(node.getString("type"));
+			}
+		}
+		return false;
+	}
 	
 	protected Graph graph;
 	protected Visualization vis;
@@ -137,10 +174,66 @@ public class ScanGroupView extends JPanel {
 		}
 		
 		// tooltips
-		HTMLToolTipControl toolTipControl = new TableToolTipControl("scanGroup", "type");
-		toolTipControl.setShowLabel(true);
-		toolTipControl.setLabelOverrides("ID:", "Type:");
-		display.addControlListener(toolTipControl);
+		HTMLToolTipControl subjectToolTip = new TableToolTipControl("scanGroup", "project", "label") {
+			@Override
+			public void itemEntered(VisualItem item, MouseEvent e) {
+				if( isSubjectItem(item) )
+					super.itemEntered(item, e);
+			}
+			@Override
+			public void itemExited(VisualItem item, MouseEvent e) {
+				if( isSubjectItem(item) )
+					super.itemExited(item, e);
+			}
+		};
+		subjectToolTip.setShowLabel(true);
+		subjectToolTip.setLabelOverrides("ID", "Project", "Label");
+		display.addControlListener(subjectToolTip);
+		
+		HTMLToolTipControl scanGroupToolTip = new TableToolTipControl("scanGroup", "nscans", "scan_list") {
+			@Override
+			public void itemEntered(VisualItem item, MouseEvent e) {
+				if( isScanGroupItem(item) )
+					super.itemEntered(item, e);
+			}
+			
+			@Override
+			public void itemExited(VisualItem item, MouseEvent e) {
+				if( isScanGroupItem(item) )
+					super.itemExited(item, e);
+			}
+			
+			@Override
+			protected String getFieldValue(VisualItem item, String field) {
+				if( !"scan_list".equals(field) )
+					return super.getFieldValue(item, field);
+				
+				// show at least a subset of scans
+				try {
+					final int MAX_SCANS = 10; // ellide any over this number
+					
+					@SuppressWarnings("unchecked")
+					List<String> scanList = (List<String>)item.get(field);
+					StringBuilder b = new StringBuilder();
+					int i = 0;
+					for( String scanId : scanList ) {
+						b.append(escapeHtml(scanId)).append("<br />");
+						if( i++ >= MAX_SCANS ) {
+							// limit hit, ellide the rest
+							b.append('[').append(scanList.size() - MAX_SCANS).append("&nbsp;more...]");
+							break;
+						}
+					}
+					return b.toString();
+				} catch( ClassCastException e ) {
+					_log.error("scan_list was not a List", e);
+					return super.getFieldValue(item, field);
+				}
+			}
+		};
+		scanGroupToolTip.setShowLabel(true);
+		scanGroupToolTip.setLabelOverrides("ID", "# Scans", "Scans");
+		display.addControlListener(scanGroupToolTip);
 		
 		// double-click to toggle fixed position
 		display.addControlListener(new ControlAdapter() {

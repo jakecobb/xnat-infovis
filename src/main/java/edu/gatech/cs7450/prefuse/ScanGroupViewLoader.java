@@ -33,6 +33,10 @@ public class ScanGroupViewLoader {
 		nodeSchema.addColumn("type", String.class);
 		nodeSchema.addColumn("size", double.class);
 		nodeSchema.addColumn("color", String.class);
+		nodeSchema.addColumn("project", String.class);
+		nodeSchema.addColumn("label", String.class);
+		nodeSchema.addColumn("nscans", int.class, 0);
+		nodeSchema.addColumn("scan_list", Object.class);
 		
 		edgeSchema = new Schema();
 		edgeSchema.addColumn(Graph.DEFAULT_SOURCE_KEY, int.class);
@@ -56,6 +60,7 @@ public class ScanGroupViewLoader {
 		XNATSearch search = new XNATSearch(conn);
 		
 		XNATTableResult subjects = search.fetchSubjects(project);
+		if( _log.isDebugEnabled() ) _log.debug("subjects.columns=" + subjects.getHeaders());
 		
 		Table nodeTable = nodeSchema.instantiate(),
 		      edgeTable = edgeSchema.instantiate();
@@ -66,6 +71,8 @@ public class ScanGroupViewLoader {
 			nodeTable.set(rowIdx, "type", "subject");
 			nodeTable.set(rowIdx, "size", 0.0d);
 			nodeTable.set(rowIdx, "color", "subjectColor");
+			nodeTable.set(rowIdx, "label", row.getValue("label"));
+			nodeTable.set(rowIdx, "project", row.getValue("project"));
 		}
 		
 		Graph graph = new Graph(nodeTable, edgeTable, false);
@@ -107,6 +114,7 @@ public class ScanGroupViewLoader {
 			groupName = nameBuilder.toString();
 		}
 		
+		ArrayList<String> scanIds = new ArrayList<String>();
 		LinkedHashMap<String, List<XNATResultSetRow>> subjToScans = 
 			new LinkedHashMap<String, List<XNATResultSetRow>>();
 		
@@ -114,6 +122,7 @@ public class ScanGroupViewLoader {
 		int nScans = 0;
 		for( XNATResultSetRow row : result.getRows() ) {
 			if( !row.getMissingFields().contains(Scans.TYPE) ) {
+				// add to the mapping
 				String subjectId = row.getValue(Sessions.SUBJECT_ID);
 				if( subjToScans.containsKey(subjectId) ) {
 					subjToScans.get(subjectId).add(row);
@@ -122,6 +131,9 @@ public class ScanGroupViewLoader {
 					scans.add(row);
 					subjToScans.put(subjectId, scans);
 				}
+				
+				// add scan id to the list
+				scanIds.add(row.getValue(Sessions.SESSION_ID) + "/" + row.getValue(Scans.ID));
 				++nScans;
 			}
 		}
@@ -135,6 +147,8 @@ public class ScanGroupViewLoader {
 			sgNode.set("type", "scan");
 			sgNode.set("size", (double)nScans);
 			sgNode.set("color", nextColor);
+			sgNode.set("nscans", nScans);
+			sgNode.set("scan_list", scanIds);
 			
 			// connect edges for each subject
 			for( Map.Entry<String, List<XNATResultSetRow>> entry : subjToScans.entrySet() ) {
