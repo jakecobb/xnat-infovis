@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
-import java.util.Iterator;
 
 import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
@@ -28,51 +27,36 @@ import prefuse.action.ItemAction;
 import prefuse.action.RepaintAction;
 import prefuse.action.animate.ColorAnimator;
 import prefuse.action.animate.LocationAnimator;
-import prefuse.action.animate.PolarLocationAnimator;
 import prefuse.action.animate.QualityControlAnimator;
-import prefuse.action.animate.SizeAnimator;
 import prefuse.action.animate.VisibilityAnimator;
 import prefuse.action.assignment.ColorAction;
 import prefuse.action.assignment.FontAction;
-import prefuse.action.distortion.BifocalDistortion;
-import prefuse.action.distortion.FisheyeDistortion;
 import prefuse.action.filter.FisheyeTreeFilter;
-import prefuse.action.filter.GraphDistanceFilter;
-import prefuse.action.layout.CollapsedStackLayout;
 import prefuse.action.layout.CollapsedSubtreeLayout;
-import prefuse.action.layout.GridLayout;
-import prefuse.action.layout.graph.BalloonTreeLayout;
-import prefuse.action.layout.graph.FruchtermanReingoldLayout;
-import prefuse.action.layout.graph.NodeLinkTreeLayout;
 import prefuse.action.layout.graph.RadialTreeLayout;
-import prefuse.action.layout.graph.SquarifiedTreeMapLayout;
 import prefuse.activity.SlowInSlowOutPacer;
-import prefuse.activity.ThereAndBackPacer;
-import prefuse.controls.AnchorUpdateControl;
 import prefuse.controls.ControlAdapter;
 import prefuse.controls.FocusControl;
 import prefuse.controls.PanControl;
-import prefuse.controls.RotationControl;
 import prefuse.controls.SubtreeDragControl;
 import prefuse.controls.WheelZoomControl;
-import prefuse.controls.ZoomControl;
 import prefuse.controls.ZoomToFitControl;
-import prefuse.controls.ZoomingPanControl;
 import prefuse.data.Tree;
 import prefuse.data.Tuple;
 import prefuse.data.event.TupleSetListener;
 import prefuse.data.io.TreeMLReader;
-import prefuse.data.query.SearchQueryBinding;
 import prefuse.data.search.PrefixSearchTupleSet;
 import prefuse.data.tuple.TupleSet;
+import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.DefaultRendererFactory;
 import prefuse.render.EdgeRenderer;
-import prefuse.render.AbstractShapeRenderer;
 import prefuse.render.LabelRenderer;
 import prefuse.util.ColorLib;
 import prefuse.util.FontLib;
+import prefuse.util.MathLib;
 import prefuse.util.ui.JFastLabel;
 import prefuse.util.ui.JSearchPanel;
+import prefuse.visual.NodeItem;
 import prefuse.visual.VisualItem;
 import prefuse.visual.expression.InGroupPredicate;
 import prefuse.visual.sort.TreeDepthItemSorter;
@@ -145,8 +129,45 @@ public class TreeView extends Display {
         m_vis.putAction("animatePaint", animatePaint);
         
         // create the tree layout action
-        RadialTreeLayout treeLayout = new RadialTreeLayout(tree ,80);
+        RadialTreeLayout treeLayout = new RadialTreeLayout(tree, 300) {
+      	  // try to prevent text overlap on the top and bottom
+           @Override
+           protected void setPolarLocation(NodeItem n, NodeItem p, double r, double t) {
+         	  // normalize angle
+              while ( t > MathLib.TWO_PI )
+                  t -= MathLib.TWO_PI;
+              while ( t < 0 )
+                  t += MathLib.TWO_PI;
+              
+              final double ONE_FOURTH_PI = Math.PI / 4;
+              final double TOP_LEFT = MathLib.TWO_PI - (3d*ONE_FOURTH_PI);
+              final double TOP_RIGHT = MathLib.TWO_PI - ONE_FOURTH_PI;
+              final double BOTTOM_RIGHT = ONE_FOURTH_PI;
+              final double BOTTOM_LEFT = 3d * ONE_FOURTH_PI;
+              
+              // adjust in top and bottom middle quadrants
+              double dist = 0d;
+              if( t > TOP_LEFT && t < TOP_RIGHT ) {
+            	  dist = Math.abs(((3d * Math.PI) / 2d) - t);
+              } else if( t > BOTTOM_RIGHT && t < BOTTOM_LEFT ) {
+            	  dist = Math.abs((Math.PI/2d) - t);
+              }
+              if( dist != 0d ) {
+                 dist = ONE_FOURTH_PI - dist;
+                 final double PEAK = MathLib.TWO_PI / 9d;
+                 // add extra space very close to the middle
+                 if( dist > PEAK )
+                    dist += ((dist - PEAK ) / (ONE_FOURTH_PI - PEAK)) / 5d;
+
+                 dist /= 2d;
+              }
+//              System.out.println("n.name=" + n.getString("name") + ", r=" + r + ", t=" + t + ", dist=" + dist + ", r+dist=" + (r+dist) + ", r+(r*dist)=" + (r+(r*dist)));
+              double newRadius = r + (r * dist);
+              super.setPolarLocation(n, p, newRadius, t);
+           }
+        };
         treeLayout.setLayoutAnchor(new Point2D.Double(getWidth()/2, getHeight()/2));
+
         m_vis.putAction("treeLayout", treeLayout);
         
         CollapsedSubtreeLayout subLayout = 
@@ -160,7 +181,15 @@ public class TreeView extends Display {
         filter.add(new FisheyeTreeFilter(tree, 1));
        
         //filter.add(new GraphDistanceFilter(tree , 2));
-        filter.add(new FontAction(treeNodes, FontLib.getFont("Courier New", 16)));
+        filter.add(new FontAction(treeNodes, FontLib.getFont("Courier New", 16)) {
+           @Override
+           public Font getFont(VisualItem item) {
+             Font font = super.getFont(item);
+             if( item.isExpanded() )
+            	 return font;
+             return font.deriveFont(10f);
+           }
+        });
         filter.add(treeLayout);
         filter.add(subLayout);
         filter.add(textColor);
@@ -246,8 +275,10 @@ public class TreeView extends Display {
     // ------------------------------------------------------------------------
     
     public void setOrientation(int orientation) {
-    	RadialTreeLayout rtl 
-            = (RadialTreeLayout)m_vis.getAction("treeLayout");
+//    	RadialTreeLayout rtl 
+//            = (RadialTreeLayout)m_vis.getAction("treeLayout");
+//      ActionList treeLayout = (ActionList)m_vis.getAction("treeLayout");
+//      RadialTreeLayout rt1 = (RadialTreeLayout)treeLayout.get(0);
     	CollapsedSubtreeLayout stl
             = (CollapsedSubtreeLayout)m_vis.getAction("subLayout");
         switch ( orientation ) {

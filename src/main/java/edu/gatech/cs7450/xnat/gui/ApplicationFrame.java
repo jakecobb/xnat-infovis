@@ -157,14 +157,6 @@ public class ApplicationFrame extends JFrame {
 		gbc_btnScatterplot.gridy = 0;
 		contentPane.add(btnScatterplot, gbc_btnScatterplot);
 		
-		JButton btnScanGroups = new JButton("Search to Scan Groups");
-		GridBagConstraints gbc_btnScanGroups = new GridBagConstraints();
-		gbc_btnScanGroups.fill = GridBagConstraints.VERTICAL;
-		gbc_btnScanGroups.insets = new Insets(0, 0, 5, 0);
-		gbc_btnScanGroups.gridx = 1;
-		gbc_btnScanGroups.gridy = 0;
-		contentPane.add(btnScanGroups, gbc_btnScanGroups);
-		
 		JSeparator separator = new JSeparator();
 		GridBagConstraints gbc_separator = new GridBagConstraints();
 		gbc_separator.gridwidth = 2;
