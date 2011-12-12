@@ -9,6 +9,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -22,6 +23,9 @@ import javax.swing.border.EmptyBorder;
 
 import org.apache.log4j.Logger;
 
+import prefuse.data.Tree;
+import edu.gatech.cs7450.prefuse.TreeView;
+import edu.gatech.cs7450.prefuse.TreeViewLoader;
 import edu.gatech.cs7450.xnat.SearchQuery;
 import edu.gatech.cs7450.xnat.SearchWhere;
 import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
@@ -194,9 +198,14 @@ public class ApplicationFrame extends JFrame {
 					XNATSearch search = new XNATSearch(connection);
 					XNATResultSet result = search.runSearch(where);
 					
-					String message = "Got result with: " + result.getNumRecords() + " reported records and " + result.getRows().size() + " actual rows."; 
-					_log.info(message);
-					JOptionPane.showMessageDialog(ApplicationFrame.this, message, "FIXME: TO THE OVERVIEW VIZ", JOptionPane.INFORMATION_MESSAGE);
+					Tree dataTree = TreeViewLoader.loadResult(project, result);
+					
+					JComponent treeview = TreeView.demo(dataTree, "name");
+					final JFrame frame = new JFrame("XNAT Overview");
+					frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+					frame.setContentPane(treeview);
+					frame.pack();
+					frame.setVisible(true);
 				} catch( XNATException e ) {
 					final String MSG = "Project data query failed for: " + project;
 					_log.error(MSG, e);
