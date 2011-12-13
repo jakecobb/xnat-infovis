@@ -309,10 +309,10 @@ public class XNATScatterPlot extends JPanel {
          */
 
         // dynamic query based on search criteria specified
-        SearchQueryBinding searchQ = new SearchQueryBinding(vt, Columns.PROJECT);
+        SearchQueryBinding searchQ = new SearchQueryBinding(vt, Columns.PROJECT, new PartialSearchTupleSet());
         filter.add(searchQ.getPredicate());		// reuse the same filter as the population query
         
-        SearchQueryBinding searchQ1 = new SearchQueryBinding(vt, Columns.SUBJECT);
+        SearchQueryBinding searchQ1 = new SearchQueryBinding(vt, Columns.SUBJECT, new PartialSearchTupleSet());
         filter.add(searchQ1.getPredicate());		// reuse the same filter as the population query
        
         /*
@@ -493,11 +493,11 @@ public class XNATScatterPlot extends JPanel {
         
 
         //search box
-        JSearchPanel searcher = searchQ.createSearchPanel();
+        JSearchPanel searcher = searchQ.createSearchPanel(true);
         searcher.setLabelText("Project");
         searcher.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
         
-        JSearchPanel searcher1 = searchQ1.createSearchPanel();
+        JSearchPanel searcher1 = searchQ1.createSearchPanel(true);
         searcher1.setLabelText("Subject");
         searcher1.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 0));
         

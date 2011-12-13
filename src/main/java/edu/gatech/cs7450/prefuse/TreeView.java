@@ -274,7 +274,7 @@ public class TreeView extends Display {
         setOrientation(m_orientation);
         m_vis.run("filter");
         
-        TupleSet search = new PrefixSearchTupleSet(); 
+        TupleSet search = new PartialSearchTupleSet();
         m_vis.addFocusGroup(Visualization.SEARCH_ITEMS, search);
         search.addTupleSetListener(new TupleSetListener() {
             public void tupleSetChanged(TupleSet t, Tuple[] add, Tuple[] rem) {
