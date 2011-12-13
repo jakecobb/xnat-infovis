@@ -37,6 +37,7 @@ import prefuse.action.layout.graph.RadialTreeLayout;
 import prefuse.activity.SlowInSlowOutPacer;
 import prefuse.controls.ControlAdapter;
 import prefuse.controls.FocusControl;
+import prefuse.controls.HoverActionControl;
 import prefuse.controls.PanControl;
 import prefuse.controls.SubtreeDragControl;
 import prefuse.controls.WheelZoomControl;
@@ -61,8 +62,9 @@ import prefuse.visual.VisualItem;
 import prefuse.visual.expression.InGroupPredicate;
 import prefuse.visual.sort.TreeDepthItemSorter;
 public class TreeView extends Display {
-
-    public static final String TREE_CHI = "/chi-ontology.xml.gz";
+	private static final long serialVersionUID = 1L;
+	
+	public static final String TREE_CHI = "/chi-ontology.xml.gz";
     private static final String tree = "tree";
     private static final String treeNodes = "tree.nodes";
     private static final String treeEdges = "tree.edges";
@@ -104,8 +106,16 @@ public class TreeView extends Display {
                
         // colors
         ItemAction nodeColor = new NodeColorAction(treeNodes);
+        
         ItemAction textColor = new ColorAction(treeNodes,
-                VisualItem.TEXTCOLOR, ColorLib.rgb(139,69,19));
+                VisualItem.TEXTCOLOR, ColorLib.rgb(139,69,19)) {
+           @Override
+           public int getColor(VisualItem item) {
+             if( item.isHover() )
+                return ColorLib.gray(255);
+             return getDefaultColor();
+           }
+        };
         m_vis.putAction("textColor", textColor);
         
         ItemAction edgeColor = new ColorAction(treeEdges,
@@ -114,12 +124,14 @@ public class TreeView extends Display {
         // quick repaint
         ActionList repaint = new ActionList();
         repaint.add(nodeColor);
+        repaint.add(textColor);
         repaint.add(new RepaintAction());
         m_vis.putAction("repaint", repaint);
         
         // full paint
         ActionList fullPaint = new ActionList();
         fullPaint.add(nodeColor);
+        fullPaint.add(textColor);
         m_vis.putAction("fullPaint", fullPaint);
         
         // animate paint change
@@ -241,6 +253,7 @@ public class TreeView extends Display {
         //addControlListener(new RotationControl());
         addControlListener(new PanControl());
         addControlListener(new FocusControl(1, "filter"));
+        addControlListener(new HoverActionControl("repaint"));
         
         registerKeyboardAction(
             new OrientAction(Constants.ORIENT_LEFT_RIGHT),
@@ -470,7 +483,8 @@ public class TreeView extends Display {
     // ------------------------------------------------------------------------
    
     public class OrientAction extends AbstractAction {
-        private int orientation;
+		private static final long serialVersionUID = 1L;
+		private int orientation;
         
         public OrientAction(int orientation) {
             this.orientation = orientation;
@@ -545,6 +559,8 @@ public class TreeView extends Display {
             	
             	return ColorLib.rgb(123,104,238);
             }
+            else if ( item.isHover() )
+            	return ColorLib.gray(0);
             else if ( item.getDOI() > -1 )
                 return ColorLib.rgb(123,104,238);
             else
