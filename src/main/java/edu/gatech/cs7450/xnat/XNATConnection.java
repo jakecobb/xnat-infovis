@@ -58,8 +58,18 @@ public class XNATConnection implements Serializable {
 	 * @throws XNATException if the session cookie could not be found
 	 */
 	public void authenticate() throws XNATException {
+		sessCookie = null;
 		try {
 			ClientResponse response = client.resource(hostBase + "/JSESSION").get(ClientResponse.class);
+			
+			// check the status
+			if( response.getStatus() != ClientResponse.Status.OK.getStatusCode() ) {
+				final String MSG = "Authentication failed with status: " + response.getStatus();
+				_log.warn(MSG);
+				throw new XNATException(MSG);
+			}
+			
+			// find the session cookie
 			for( Cookie cookie : response.getCookies() ) {
 				if( "JSESSIONID".equals(cookie.getName()) ) {
 					sessCookie = cookie;
