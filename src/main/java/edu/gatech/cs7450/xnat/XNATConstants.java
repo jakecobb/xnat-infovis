@@ -60,6 +60,8 @@ public final class XNATConstants {
 			"ID","project","label","insert_date","insert_user", "URI"));
 		
 		// present but not reflected
+		public static final SearchField SUBJECTID =
+			new SearchField("xnat:subjectData", "SUBJECTID", "string", "ID", "ID", "xnat:subjectData/SUBJECTID", false, 0);
 		public static final SearchField LABEL = 
 			new SearchField("xnat:subjectData", "LABEL", "string", "SUBJECT ID", "Subject Label", "xnat:subjectData/LABEL", false, 0);
 		

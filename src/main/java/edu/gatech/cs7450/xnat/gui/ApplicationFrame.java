@@ -27,12 +27,7 @@ import prefuse.data.Tree;
 import edu.gatech.cs7450.prefuse.TreeView;
 import edu.gatech.cs7450.prefuse.TreeViewLoader;
 import edu.gatech.cs7450.xnat.SearchQuery;
-import edu.gatech.cs7450.xnat.SearchWhere;
-import edu.gatech.cs7450.xnat.SearchWhere.SearchMethod;
-import edu.gatech.cs7450.xnat.SingleCriteria;
-import edu.gatech.cs7450.xnat.SingleCriteria.CompareOperator;
 import edu.gatech.cs7450.xnat.XNATConnection;
-import edu.gatech.cs7450.xnat.XNATConstants.Sessions;
 import edu.gatech.cs7450.xnat.XNATException;
 import edu.gatech.cs7450.xnat.XNATResultSet;
 import edu.gatech.cs7450.xnat.XNATSearch;
@@ -184,13 +179,8 @@ public class ApplicationFrame extends JFrame {
 		ProjectSelectedListener projectSelected = new ProjectSelectedListener() {
 			public void projectSelected(String project) {
 				try {
-					// query for the data for this project
-					SearchWhere where = new SearchWhere(SearchMethod.AND, 
-						new SingleCriteria(Sessions.PROJECT.getSummary(), CompareOperator.EQUAL, project));		
-					XNATSearch search = new XNATSearch(connection);
-					XNATResultSet result = search.runSearch(where);
-					
-					Tree dataTree = TreeViewLoader.loadResult(project, result);
+					TreeViewLoader loader = new TreeViewLoader(connection, project);
+					Tree dataTree = loader.loadProjectData();
 					
 					JComponent treeview = TreeView.demo(dataTree, "name");
 					final JFrame frame = new JFrame("XNAT Overview");
